@@ -1,0 +1,28 @@
+Copyright (c) 2014 forestmb
+
+This product includes software released under the New BSD License. See
+LICENSE.txt for more information.
+
+The purpose of this NOTICE.txt file is to contain notices that are required
+by the copyright owner and their license. Some of the accompanying products
+have an attribution requirement, so see below. Other accompanying products do
+not require attribution, so are not listed. 
+
+-------------------------------------------------------------------------------
+
+This product contains a dependency on Go, an open source programming language.
+
+    * LICENSE: BSD
+    * HOMEPAGE: http://golang.org/
+
+This product contains a dependency on Yahoo Fantasy Sports APIs, webservices
+that provide access to fantasy sports data.
+
+    * LICENSE: https://info.yahoo.com/legal/us/yahoo/fantasysports/
+    * HOMEPAGE: http://developer.yahoo.com/fantasysports/guide/
+
+This product contains a dependency on oauth, an OAuth 1.0 library for the Go
+programming language.
+
+    * LICENSE: MIT
+    * HOMEPAGE: https://github.com/mrjones/oauth
