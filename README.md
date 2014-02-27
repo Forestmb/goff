@@ -1,4 +1,4 @@
-# goff #
+# goff [![GoDoc](https://godoc.org/github.com/Forestmb/goff?status.png)](https://godoc.org/github.com/Forestmb/goff) #
 
 goff is a library for communicating with the [Yahoo Fantasy Sports APIs](
 http://developer.yahoo.com/fantasysports/guide/).
