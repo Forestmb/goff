@@ -47,12 +47,12 @@ func TestGetConsumer(t *testing.T) {
 }
 
 //
-// Test oauthHttpClient
+// Test oauthHTTPClient
 //
 
-func TestOAuthHttpClient(t *testing.T) {
+func TestOAuthHTTPClient(t *testing.T) {
 	expected := &http.Response{}
-	client := &oauthHttpClient{
+	client := &oauthHTTPClient{
 		token: &oauth.AccessToken{},
 		consumer: &mockOAuthConsumer{
 			Response: expected,
@@ -70,8 +70,8 @@ func TestOAuthHttpClient(t *testing.T) {
 	}
 }
 
-func TestOAuthHttpClientError(t *testing.T) {
-	client := &oauthHttpClient{
+func TestOAuthHTTPClientError(t *testing.T) {
+	client := &oauthHTTPClient{
 		token: &oauth.AccessToken{},
 		consumer: &mockOAuthConsumer{
 			Response: &http.Response{},
@@ -89,9 +89,9 @@ func TestOAuthHttpClientError(t *testing.T) {
 // Test xmlContentProvider
 //
 
-func TestXmlContentProviderGetLeague(t *testing.T) {
-	response := mockResponse(leagueXmlContent)
-	client := &oauthHttpClient{
+func TestXMLContentProviderGetLeague(t *testing.T) {
+	response := mockResponse(leagueXMLContent)
+	client := &oauthHTTPClient{
 		token: &oauth.AccessToken{},
 		consumer: &mockOAuthConsumer{
 			Response: response,
@@ -118,9 +118,9 @@ func TestXmlContentProviderGetLeague(t *testing.T) {
 	}
 }
 
-func TestXmlContentProviderGetTeam(t *testing.T) {
-	response := mockResponse(teamXmlContent)
-	client := &oauthHttpClient{
+func TestXMLContentProviderGetTeam(t *testing.T) {
+	response := mockResponse(teamXMLContent)
+	client := &oauthHTTPClient{
 		token: &oauth.AccessToken{},
 		consumer: &mockOAuthConsumer{
 			Response: response,
@@ -148,9 +148,9 @@ func TestXmlContentProviderGetTeam(t *testing.T) {
 	}
 }
 
-func TestXmlContentProviderGetError(t *testing.T) {
+func TestXMLContentProviderGetError(t *testing.T) {
 	response := mockResponse("content")
-	client := &oauthHttpClient{
+	client := &oauthHTTPClient{
 		token: &oauth.AccessToken{},
 		consumer: &mockOAuthConsumer{
 			Response: response,
@@ -166,9 +166,9 @@ func TestXmlContentProviderGetError(t *testing.T) {
 	}
 }
 
-func TestXmlContentProviderReadError(t *testing.T) {
+func TestXMLContentProviderReadError(t *testing.T) {
 	response := mockResponseReadErr()
-	client := &oauthHttpClient{
+	client := &oauthHTTPClient{
 		token: &oauth.AccessToken{},
 		consumer: &mockOAuthConsumer{
 			Response: response,
@@ -183,9 +183,9 @@ func TestXmlContentProviderReadError(t *testing.T) {
 	}
 }
 
-func TestXmlContentProviderParseError(t *testing.T) {
+func TestXMLContentProviderParseError(t *testing.T) {
 	response := mockResponse("<not-valid-xml/>")
-	client := &oauthHttpClient{
+	client := &oauthHTTPClient{
 		token: &oauth.AccessToken{},
 		consumer: &mockOAuthConsumer{
 			Response: response,
@@ -257,7 +257,7 @@ func TestGetFantasyContent(t *testing.T) {
 }
 
 func TestGetFantasyContentError(t *testing.T) {
-	expectedErr := errors.New("Error retreiving content")
+	expectedErr := errors.New("error retreiving content")
 	client := mockClient(nil, expectedErr)
 	content, actualErr := client.GetFantasyContent("http://example.com")
 	if content != nil {
@@ -397,11 +397,11 @@ func TestGetUserLeaguesMapsYear(t *testing.T) {
 
 	client.GetUserLeagues("2013")
 	yearParam := "game_keys"
-	assertUrlContainsParam(t, provider.lastGetUrl, yearParam, "nfl")
+	assertURLContainsParam(t, provider.lastGetURL, yearParam, "nfl")
 
 	year := "2010"
 	client.GetUserLeagues(year)
-	assertUrlContainsParam(t, provider.lastGetUrl, yearParam, yearKeys[year])
+	assertURLContainsParam(t, provider.lastGetURL, yearParam, yearKeys[year])
 
 	_, err := client.GetUserLeagues("1900")
 	if err == nil {
@@ -594,8 +594,8 @@ func TestGetPlayerStatsParams(t *testing.T) {
 	week := 10
 	client.GetPlayersStats("123", week, players)
 
-	assertUrlContainsParam(t, provider.lastGetUrl, "player_keys", players[0].PlayerKey)
-	assertUrlContainsParam(t, provider.lastGetUrl, "week", fmt.Sprintf("%d", week))
+	assertURLContainsParam(t, provider.lastGetURL, "player_keys", players[0].PlayerKey)
+	assertURLContainsParam(t, provider.lastGetURL, "week", fmt.Sprintf("%d", week))
 }
 
 //
@@ -720,9 +720,9 @@ func TestGetAllTeamStatsParam(t *testing.T) {
 	provider := &mockedContentProvider{content: content, err: nil}
 	client := &Client{provider: provider}
 	client.GetAllTeamStats("123", week)
-	assertUrlContainsParam(
+	assertURLContainsParam(
 		t,
-		provider.lastGetUrl,
+		provider.lastGetURL,
 		"week",
 		fmt.Sprintf("%d", week))
 }
@@ -787,7 +787,7 @@ func assertPlayersEqual(t *testing.T, expected *Player, actual *Player) {
 	}
 }
 
-func assertUrlContainsParam(t *testing.T, url string, param string, value string) {
+func assertURLContainsParam(t *testing.T, url string, param string, value string) {
 	if !strings.Contains(url, param+"="+value) {
 		t.Fatalf("Could not locate paramater in request URL\n"+
 			"\tparamter: %s\n\tvalue: %s\n\turl: %s",
@@ -857,33 +857,33 @@ func mockClient(f *FantasyContent, e error) *Client {
 // mockedContentProvider creates a goff.contentProvider that returns the
 // given content and error whenever provider.Get is called.
 type mockedContentProvider struct {
-	lastGetUrl string
+	lastGetURL string
 	content    *FantasyContent
 	err        error
 }
 
 func (m *mockedContentProvider) Get(url string) (*FantasyContent, error) {
-	m.lastGetUrl = url
+	m.lastGetURL = url
 	return m.content, m.err
 }
 
-// mockHttpClient creates a httpClient that always returns the given response
+// mockHTTPClient creates a httpClient that always returns the given response
 // and error whenever httpClient.Get is called.
-func mockHttpClient(resp *http.Response, e error) httpClient {
-	return &mockedHttpClient{
+func mockHTTPClient(resp *http.Response, e error) httpClient {
+	return &mockedHTTPClient{
 		response: resp,
 		err:      e,
 	}
 }
 
-type mockedHttpClient struct {
-	lastGetUrl string
+type mockedHTTPClient struct {
+	lastGetURL string
 	response   *http.Response
 	err        error
 }
 
-func (m *mockedHttpClient) Get(url string) (resp *http.Response, err error) {
-	m.lastGetUrl = url
+func (m *mockedHTTPClient) Get(url string) (resp *http.Response, err error) {
+	m.lastGetURL = url
 	return m.response, m.err
 }
 
@@ -902,7 +902,7 @@ func (m *mockOAuthConsumer) Get(url string, data map[string]string, a *oauth.Acc
 // Large XML
 //
 
-var teamXmlContent = `
+var teamXMLContent = `
 <?xml version="1.0" encoding="UTF-8"?>
 <fantasy_content xmlns:yahoo="http://www.yahooapis.com/v1/base.rng" xmlns="http://fantasysports.yahooapis.com/fantasy/v2/base.rng" xml:lang="en-US" yahoo:uri="http://fantasysports.yahooapis.com/fantasy/v2/team/223.l.431.t.1" time="426.26690864563ms" copyright="Data provided by Yahoo! and STATS, LLC">
   <team>
@@ -928,7 +928,7 @@ var teamXmlContent = `
   </team>
 </fantasy_content> `
 
-var leagueXmlContent = `
+var leagueXMLContent = `
     <?xml version="1.0" encoding="UTF-8"?>
     <fantasy_content xml:lang="en-US" yahoo:uri="http://fantasysports.yahooapis.com/fantasy/v2/league/223.l.431" xmlns:yahoo="http://www.yahooapis.com/v1/base.rng" time="181.80584907532ms" copyright="Data provided by Yahoo! and STATS, LLC" xmlns="http://fantasysports.yahooapis.com/fantasy/v2/base.rng">
       <league>

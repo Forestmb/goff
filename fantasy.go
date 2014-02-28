@@ -105,8 +105,8 @@ type httpClient interface {
 	Get(url string) (response *http.Response, err error)
 }
 
-// oauthHttpClient implements httpClient using OAuth 1.0 for authentication
-type oauthHttpClient struct {
+// oauthHTTPClient implements httpClient using OAuth 1.0 for authentication
+type oauthHTTPClient struct {
 	token    *oauth.AccessToken
 	consumer OAuthConsumer
 }
@@ -292,7 +292,7 @@ type Name struct {
 func NewOAuthClient(consumer OAuthConsumer, accessToken *oauth.AccessToken) *Client {
 	return &Client{
 		provider: &xmlContentProvider{
-			client: &oauthHttpClient{
+			client: &oauthHTTPClient{
 				token:    accessToken,
 				consumer: consumer,
 			},
@@ -344,7 +344,7 @@ func (p *xmlContentProvider) Get(url string) (*FantasyContent, error) {
 //
 
 // Get returns the HTTP response of a GET request to the given URL.
-func (o *oauthHttpClient) Get(url string) (*http.Response, error) {
+func (o *oauthHTTPClient) Get(url string) (*http.Response, error) {
 	return o.consumer.Get(url, map[string]string{}, o.token)
 }
 
