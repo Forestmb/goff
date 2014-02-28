@@ -11,4 +11,8 @@ https://github.com/Forestmb/goff/blob/master/LICENSE).
 
     $ go get https://github.com/Forestmb/goff
     $ cd $GOPATH/src/github.com/Forestmb/goff
-    $ go build *.go
+    $ ./build.sh
+
+To make sure this build runs before every commit, use:
+
+    $ ln -s "$(pwd)/build.sh" .git/hooks/pre-commit
