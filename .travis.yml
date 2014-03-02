@@ -3,5 +3,3 @@ language: go
 go:
     - 1.2
     - tip
-
-script: ./build.sh
