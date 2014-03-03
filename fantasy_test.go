@@ -141,7 +141,9 @@ func TestXMLContentProviderGetTeam(t *testing.T) {
 		team.Name != "Team Name" ||
 		team.Managers.List[0].ManagerID != 13 ||
 		team.Managers.List[0].Nickname != "Nickname" ||
-		team.Managers.List[0].Guid != "1234567890" {
+		team.Managers.List[0].Guid != "1234567890" ||
+		team.TeamLogos[0].Size != "medium" ||
+		team.TeamLogos[0].URL != "http://example.com/logo.png" {
 
 		t.Fatalf("unexpected team content returned\n"+
 			"\tcontent: %+v", team)
@@ -913,7 +915,7 @@ var teamXMLContent = `
     <team_logos>
       <team_logo>
         <size>medium</size>
-        <url>http://l.yimg.com/a/i/us/sp/fn/default/full/nfl/icon_01_48.gif</url>
+        <url>http://example.com/logo.png</url>
       </team_logo>
     </team_logos>
     <division_id>2</division_id>

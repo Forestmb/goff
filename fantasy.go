@@ -177,6 +177,8 @@ type Team struct {
 	TeamKey               string        `xml:"team_key"`
 	TeamID                uint64        `xml:"team_id"`
 	Name                  string        `xml:"name"`
+	URL                   string        `xml:"url"`
+	TeamLogos             []TeamLogo    `xml:"team_logos>team_logo"`
 	IsOwnedByCurrentLogin bool          `xml:"is_owned_by_current_login"`
 	WavierPriority        int           `xml:"waiver_priority"`
 	NumberOfMoves         int           `xml:"number_of_moves"`
@@ -249,6 +251,12 @@ type TeamStandings struct {
 // Players contains a list of players.
 type Players struct {
 	List []Player `xml:"player"`
+}
+
+// TeamLogo is a image for a given team.
+type TeamLogo struct {
+	Size string `xml:"size"`
+	URL  string `xml:"url"`
 }
 
 // A Player is a single player for the given sport.
