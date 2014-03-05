@@ -126,50 +126,30 @@ type FantasyContent struct {
 	XMLName xml.Name `xml:"fantasy_content"`
 	League  League   `xml:"league"`
 	Team    Team     `xml:"team"`
-	Users   Users    `xml:"users"`
-}
-
-// Users contains a list of Users
-type Users struct {
-	List []User `xml:"user"`
+	Users   []User   `xml:"users>user"`
 }
 
 // User contains the games a user is participating in
 type User struct {
-	Games Games `xml:"games"`
-}
-
-// Games contains a list of games
-type Games struct {
-	List []Game `xml:"game"`
+	Games []Game `xml:"games>game"`
 }
 
 // Game represents a single year in the Yahoo fantasy football ecosystem. It consists
 // of zero or more leagues.
 type Game struct {
-	Leagues Leagues `xml:"leagues"`
-}
-
-// Leagues contains a list of leagues.
-type Leagues struct {
-	List []League `xml:"league"`
+	Leagues []League `xml:"leagues>league"`
 }
 
 // A League is a uniquely identifiable group of players and teams. The scoring system,
 // roster details, and other metadata can differ between leagues.
 type League struct {
-	LeagueKey   string  `xml:"league_key"`
-	LeagueID    uint64  `xml:"league_id"`
-	Name        string  `xml:"name"`
-	Players     Players `xml:"players"`
-	Teams       Teams   `xml:"teams"`
-	CurrentWeek int     `xml:"current_week"`
-	IsFinished  bool    `xml:"is_finished"`
-}
-
-// Teams contains a list of teams
-type Teams struct {
-	List []Team `xml:"team"`
+	LeagueKey   string   `xml:"league_key"`
+	LeagueID    uint64   `xml:"league_id"`
+	Name        string   `xml:"name"`
+	Players     []Player `xml:"players>player"`
+	Teams       []Team   `xml:"teams>team"`
+	CurrentWeek int      `xml:"current_week"`
+	IsFinished  bool     `xml:"is_finished"`
 }
 
 // A Team is a participant in exactly one league.
@@ -183,36 +163,26 @@ type Team struct {
 	WavierPriority        int           `xml:"waiver_priority"`
 	NumberOfMoves         int           `xml:"number_of_moves"`
 	NumberOfTrades        int           `xml:"number_of_trades"`
-	Managers              Managers      `xml:"managers"`
-	Matchups              Matchups      `xml:"matchups"`
+	Managers              []Manager     `xml:"managers>manager"`
+	Matchups              []Matchup     `xml:"matchups>matchup"`
 	Roster                Roster        `xml:"roster"`
 	TeamPoints            Points        `xml:"team_points"`
 	TeamStandings         TeamStandings `xml:"team_standings"`
-	Players               Players       `xml:"players"`
+	Players               []Player      `xml:"players>player"`
 }
 
 // A Roster is the set of players belonging to one team for a given week.
 type Roster struct {
-	CoverageType string  `xml:"coverage_type"`
-	Players      Players `xml:"players"`
-	Week         int     `xml:"week"`
-}
-
-// Matchups is a list of matchups
-type Matchups struct {
-	List []Matchup `xml:"matchup"`
+	CoverageType string   `xml:"coverage_type"`
+	Players      []Player `xml:"players>player"`
+	Week         int      `xml:"week"`
 }
 
 // A Matchup is a collection of teams paired against one another for a given
 // week.
 type Matchup struct {
-	Week  int   `xml:"week"`
-	Teams Teams `xml:"teams"`
-}
-
-// Managers is a list of managers
-type Managers struct {
-	List []Manager `xml:"manager"`
+	Week  int    `xml:"week"`
+	Teams []Team `xml:"teams>team"`
 }
 
 // A Manager is a user in change of a given team.
@@ -248,11 +218,6 @@ type TeamStandings struct {
 	PointsAgainst float64 `xml:"points_against"`
 }
 
-// Players contains a list of players.
-type Players struct {
-	List []Player `xml:"player"`
-}
-
 // TeamLogo is a image for a given team.
 type TeamLogo struct {
 	Size string `xml:"size"`
@@ -261,13 +226,13 @@ type TeamLogo struct {
 
 // A Player is a single player for the given sport.
 type Player struct {
-	PlayerKey          string             `xml:"player_key"`
-	PlayerID           uint64             `xml:"player_id"`
-	Name               Name               `xml:"name"`
-	DisplayPosition    string             `xml:"display_position"`
-	ElligiblePositions ElligiblePositions `xml:"elligible_positions"`
-	SelectedPosition   SelectedPosition   `xml:"selected_position"`
-	PlayerPoints       Points             `xml:"player_points"`
+	PlayerKey          string           `xml:"player_key"`
+	PlayerID           uint64           `xml:"player_id"`
+	Name               Name             `xml:"name"`
+	DisplayPosition    string           `xml:"display_position"`
+	ElligiblePositions []string         `xml:"elligible_positions>position"`
+	SelectedPosition   SelectedPosition `xml:"selected_position"`
+	PlayerPoints       Points           `xml:"player_points"`
 }
 
 // SelectedPosition is the position chosen for a Player for a given week.
@@ -275,12 +240,6 @@ type SelectedPosition struct {
 	CoverageType string `xml:"coverage_type"`
 	Week         int    `xml:"week"`
 	Position     string `xml:"position"`
-}
-
-// ElligiblePositions is a list of positions a Player is elligible to
-// participate as.
-type ElligiblePositions struct {
-	List []string `xml:"posiiton"`
 }
 
 // Name is a name of a player.
@@ -388,15 +347,15 @@ func (c *Client) GetUserLeagues(year string) ([]League, error) {
 		return nil, err
 	}
 
-	if len(content.Users.List) == 0 {
+	if len(content.Users) == 0 {
 		return nil, errors.New("no users returned for current user")
 	}
 
-	if len(content.Users.List[0].Games.List) == 0 {
+	if len(content.Users[0].Games) == 0 {
 		return make([]League, 0), nil
 	}
 
-	return content.Users.List[0].Games.List[0].Leagues.List, nil
+	return content.Users[0].Games[0].Leagues, nil
 }
 
 // GetPlayersStats returns a list of Players containing their stats for the
@@ -420,7 +379,7 @@ func (c *Client) GetPlayersStats(leagueKey string, week int, players []Player) (
 	if err != nil {
 		return nil, err
 	}
-	return content.League.Players.List, nil
+	return content.League.Players, nil
 }
 
 // GetTeamRoster returns a team's roster for the given week.
@@ -434,7 +393,7 @@ func (c *Client) GetTeamRoster(teamKey string, week int) ([]Player, error) {
 		return nil, err
 	}
 
-	return content.Team.Roster.Players.List, nil
+	return content.Team.Roster.Players, nil
 }
 
 // GetAllTeamStats gets teams stats for a given week.
@@ -448,7 +407,7 @@ func (c *Client) GetAllTeamStats(leagueKey string, week int) ([]Team, error) {
 		return nil, err
 	}
 
-	return content.League.Teams.List, nil
+	return content.League.Teams, nil
 }
 
 // GetTeam returns all available information about the given team.
@@ -486,5 +445,5 @@ func (c *Client) GetAllTeams(leagueKey string) ([]Team, error) {
 	if err != nil {
 		return nil, err
 	}
-	return content.League.Teams.List, nil
+	return content.League.Teams, nil
 }

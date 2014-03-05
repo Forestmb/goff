@@ -139,9 +139,9 @@ func TestXMLContentProviderGetTeam(t *testing.T) {
 	if team.TeamKey != "223.l.431.t.1" ||
 		team.TeamID != 1 ||
 		team.Name != "Team Name" ||
-		team.Managers.List[0].ManagerID != 13 ||
-		team.Managers.List[0].Nickname != "Nickname" ||
-		team.Managers.List[0].Guid != "1234567890" ||
+		team.Managers[0].ManagerID != 13 ||
+		team.Managers[0].Nickname != "Nickname" ||
+		team.Managers[0].Guid != "1234567890" ||
 		team.TeamLogos[0].Size != "medium" ||
 		team.TeamLogos[0].URL != "http://example.com/logo.png" {
 
@@ -325,7 +325,7 @@ func TestGetUserLeaguesError(t *testing.T) {
 }
 
 func TestGetUserLeaguesNoUsers(t *testing.T) {
-	content := &FantasyContent{Users: Users{List: []User{}}}
+	content := &FantasyContent{Users: []User{}}
 	client := mockClient(content, nil)
 	actual, err := client.GetUserLeagues("2013")
 	if err == nil {
@@ -337,13 +337,9 @@ func TestGetUserLeaguesNoUsers(t *testing.T) {
 
 func TestGetUserLeaguesNoGames(t *testing.T) {
 	content := &FantasyContent{
-		Users: Users{
-			List: []User{
-				User{
-					Games: Games{
-						List: []Game{},
-					},
-				},
+		Users: []User{
+			User{
+				Games: []Game{},
 			},
 		},
 	}
@@ -360,17 +356,11 @@ func TestGetUserLeaguesNoGames(t *testing.T) {
 
 func TestGetUserLeaguesNoLeagues(t *testing.T) {
 	content := &FantasyContent{
-		Users: Users{
-			List: []User{
-				User{
-					Games: Games{
-						List: []Game{
-							Game{
-								Leagues: Leagues{
-									List: []League{},
-								},
-							},
-						},
+		Users: []User{
+			User{
+				Games: []Game{
+					Game{
+						Leagues: []League{},
 					},
 				},
 			},
@@ -520,9 +510,7 @@ func TestGetPlayerStats(t *testing.T) {
 
 	client := mockClient(&FantasyContent{
 		League: League{
-			Players: Players{
-				List: players,
-			},
+			Players: players,
 		},
 	},
 		nil)
@@ -551,9 +539,7 @@ func TestGetPlayerStatsError(t *testing.T) {
 
 	client := mockClient(&FantasyContent{
 		League: League{
-			Players: Players{
-				List: players,
-			},
+			Players: players,
 		},
 	},
 		errors.New("error"))
@@ -581,9 +567,7 @@ func TestGetPlayerStatsParams(t *testing.T) {
 	provider := &mockedContentProvider{
 		content: &FantasyContent{
 			League: League{
-				Players: Players{
-					List: players,
-				},
+				Players: players,
 			},
 		},
 		err: nil,
@@ -620,9 +604,7 @@ func TestGetTeamRoster(t *testing.T) {
 	client := mockClient(&FantasyContent{
 		Team: Team{
 			Roster: Roster{
-				Players: Players{
-					List: players,
-				},
+				Players: players,
 			},
 		},
 	},
@@ -651,9 +633,7 @@ func TestGetTeamRosterError(t *testing.T) {
 	client := mockClient(&FantasyContent{
 		Team: Team{
 			Roster: Roster{
-				Players: Players{
-					List: players,
-				},
+				Players: players,
 			},
 		},
 	},
@@ -672,10 +652,8 @@ func TestGetAllTeamStats(t *testing.T) {
 	team := Team{TeamKey: "key1", TeamID: 1, Name: "name1"}
 	content := &FantasyContent{
 		League: League{
-			Teams: Teams{
-				List: []Team{
-					team,
-				},
+			Teams: []Team{
+				team,
 			},
 		},
 	}
@@ -692,10 +670,8 @@ func TestGetAllTeamStatsError(t *testing.T) {
 	team := Team{TeamKey: "key1", TeamID: 1, Name: "name1"}
 	content := &FantasyContent{
 		League: League{
-			Teams: Teams{
-				List: []Team{
-					team,
-				},
+			Teams: []Team{
+				team,
 			},
 		},
 	}
@@ -711,10 +687,8 @@ func TestGetAllTeamStatsParam(t *testing.T) {
 	team := Team{TeamKey: "key1", TeamID: 1, Name: "name1"}
 	content := &FantasyContent{
 		League: League{
-			Teams: Teams{
-				List: []Team{
-					team,
-				},
+			Teams: []Team{
+				team,
 			},
 		},
 	}
@@ -737,10 +711,8 @@ func TestGetAllTeams(t *testing.T) {
 	team := Team{TeamKey: "key1", TeamID: 1, Name: "name1"}
 	content := &FantasyContent{
 		League: League{
-			Teams: Teams{
-				List: []Team{
-					team,
-				},
+			Teams: []Team{
+				team,
 			},
 		},
 	}
@@ -758,10 +730,8 @@ func TestGetAllTeamsError(t *testing.T) {
 	team := Team{TeamKey: "key1", TeamID: 1, Name: "name1"}
 	content := &FantasyContent{
 		League: League{
-			Teams: Teams{
-				List: []Team{
-					team,
-				},
+			Teams: []Team{
+				team,
 			},
 		},
 	}
@@ -829,17 +799,11 @@ func assertLeaguesEqual(t *testing.T, expectedLeagues []League, actualLeagues []
 
 func createLeagueList(leagues ...League) *FantasyContent {
 	return &FantasyContent{
-		Users: Users{
-			List: []User{
-				User{
-					Games: Games{
-						List: []Game{
-							Game{
-								Leagues: Leagues{
-									List: leagues,
-								},
-							},
-						},
+		Users: []User{
+			User{
+				Games: []Game{
+					Game{
+						Leagues: leagues,
 					},
 				},
 			},
