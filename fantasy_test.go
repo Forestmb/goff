@@ -111,6 +111,8 @@ func TestXMLContentProviderGetLeague(t *testing.T) {
 		league.LeagueID != 431 ||
 		league.Name != "League Name" ||
 		league.CurrentWeek != 16 ||
+		league.StartWeek != 1 ||
+		league.EndWeek != 16 ||
 		league.IsFinished != true {
 
 		t.Fatalf("unexpected league content returned\n"+

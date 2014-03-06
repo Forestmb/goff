@@ -149,6 +149,8 @@ type League struct {
 	Players     []Player `xml:"players>player"`
 	Teams       []Team   `xml:"teams>team"`
 	CurrentWeek int      `xml:"current_week"`
+	StartWeek   int      `xml:"start_week"`
+	EndWeek     int      `xml:"end_week"`
 	IsFinished  bool     `xml:"is_finished"`
 }
 
