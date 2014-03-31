@@ -107,17 +107,7 @@ func TestXMLContentProviderGetLeague(t *testing.T) {
 	}
 
 	league := content.League
-	if league.LeagueKey != "223.l.431" ||
-		league.LeagueID != 431 ||
-		league.Name != "League Name" ||
-		league.CurrentWeek != 16 ||
-		league.StartWeek != 1 ||
-		league.EndWeek != 16 ||
-		league.IsFinished != true {
-
-		t.Fatalf("unexpected league content returned\n"+
-			"\tcontent: %+v", league)
-	}
+	assertLeaguesEqual(t, []League{expectedLeague}, []League{league})
 }
 
 func TestXMLContentProviderGetTeam(t *testing.T) {
@@ -138,18 +128,7 @@ func TestXMLContentProviderGetTeam(t *testing.T) {
 	}
 
 	team := content.Team
-	if team.TeamKey != "223.l.431.t.1" ||
-		team.TeamID != 1 ||
-		team.Name != "Team Name" ||
-		team.Managers[0].ManagerID != 13 ||
-		team.Managers[0].Nickname != "Nickname" ||
-		team.Managers[0].Guid != "1234567890" ||
-		team.TeamLogos[0].Size != "medium" ||
-		team.TeamLogos[0].URL != "http://example.com/logo.png" {
-
-		t.Fatalf("unexpected team content returned\n"+
-			"\tcontent: %+v", team)
-	}
+	assertTeamsEqual(t, &expectedTeam, &team)
 }
 
 func TestXMLContentProviderGetError(t *testing.T) {
@@ -300,13 +279,7 @@ func TestGetFantasyContentRequestcount(t *testing.T) {
 //
 
 func TestGetUserLeagues(t *testing.T) {
-	leagues := []League{
-		League{
-			LeagueKey: "key1",
-			LeagueID:  1,
-			Name:      "name1",
-		},
-	}
+	leagues := []League{expectedLeague}
 	content := createLeagueList(leagues...)
 	client := mockClient(content, nil)
 	l, err := client.GetUserLeagues("2013")
@@ -408,18 +381,13 @@ func TestGetUserLeaguesMapsYear(t *testing.T) {
 //
 
 func TestGetTeam(t *testing.T) {
-	team := Team{
-		TeamKey: "teamKey1",
-		TeamID:  1,
-		Name:    "name1",
-	}
-	client := mockClient(&FantasyContent{Team: team}, nil)
+	client := mockClient(&FantasyContent{Team: expectedTeam}, nil)
 
-	actual, err := client.GetTeam(team.TeamKey)
+	actual, err := client.GetTeam(expectedTeam.TeamKey)
 	if err != nil {
 		t.Fatalf("Client returned unexpected error: %s", err)
 	}
-	assertTeamsEqual(t, &team, actual)
+	assertTeamsEqual(t, &expectedTeam, actual)
 }
 
 func TestGetTeamError(t *testing.T) {
@@ -449,22 +417,14 @@ func TestGetTeamNoTeamFound(t *testing.T) {
 //
 
 func TestGetLeagueMetadata(t *testing.T) {
-	league := League{
-		LeagueKey:   "key1",
-		LeagueID:    1,
-		Name:        "name1",
-		CurrentWeek: 2,
-		IsFinished:  false,
-	}
+	client := mockClient(&FantasyContent{League: expectedLeague}, nil)
 
-	client := mockClient(&FantasyContent{League: league}, nil)
-
-	actual, err := client.GetLeagueMetadata(league.LeagueKey)
+	actual, err := client.GetLeagueMetadata(expectedLeague.LeagueKey)
 	if err != nil {
 		t.Fatalf("Client returned unexpected error: %s", err)
 	}
 
-	assertLeaguesEqual(t, []League{league}, []League{*actual})
+	assertLeaguesEqual(t, []League{expectedLeague}, []League{*actual})
 }
 
 func TestGetLeagueMetadataError(t *testing.T) {
@@ -651,11 +611,10 @@ func TestGetTeamRosterError(t *testing.T) {
 //
 
 func TestGetAllTeamStats(t *testing.T) {
-	team := Team{TeamKey: "key1", TeamID: 1, Name: "name1"}
 	content := &FantasyContent{
 		League: League{
 			Teams: []Team{
-				team,
+				expectedTeam,
 			},
 		},
 	}
@@ -665,7 +624,7 @@ func TestGetAllTeamStats(t *testing.T) {
 		t.Fatalf("Client returned unexpected error: %s", err)
 	}
 
-	assertTeamsEqual(t, &team, &actual[0])
+	assertTeamsEqual(t, &expectedTeam, &actual[0])
 }
 
 func TestGetAllTeamStatsError(t *testing.T) {
@@ -710,11 +669,10 @@ func TestGetAllTeamStatsParam(t *testing.T) {
 //
 
 func TestGetAllTeams(t *testing.T) {
-	team := Team{TeamKey: "key1", TeamID: 1, Name: "name1"}
 	content := &FantasyContent{
 		League: League{
 			Teams: []Team{
-				team,
+				expectedTeam,
 			},
 		},
 	}
@@ -725,7 +683,7 @@ func TestGetAllTeams(t *testing.T) {
 		t.Fatalf("Client returned unexpected error: %s", err)
 	}
 
-	assertTeamsEqual(t, &team, &actual[0])
+	assertTeamsEqual(t, &expectedTeam, &actual[0])
 }
 
 func TestGetAllTeamsError(t *testing.T) {
@@ -772,26 +730,86 @@ func assertURLContainsParam(t *testing.T, url string, param string, value string
 }
 
 func assertTeamsEqual(t *testing.T, expectedTeam *Team, actualTeam *Team) {
-	if expectedTeam.TeamKey != actualTeam.TeamKey ||
-		expectedTeam.TeamID != actualTeam.TeamID ||
-		expectedTeam.Name != actualTeam.Name {
-		t.Fatalf("Actual team does not equal expected team\n"+
-			"\texpected: %+v\n\tactual: %+v",
-			expectedTeam,
-			actualTeam)
-	}
+	assertStringEquals(t, expectedTeam.TeamKey, actualTeam.TeamKey)
+	assertUintEquals(t, expectedTeam.TeamID, actualTeam.TeamID)
+	assertFloatEquals(t, expectedTeam.TeamPoints.Total, actualTeam.TeamPoints.Total)
+	assertFloatEquals(
+		t,
+		expectedTeam.TeamProjectedPoints.Total,
+		actualTeam.TeamProjectedPoints.Total)
+	assertStringEquals(t, expectedTeam.Name, actualTeam.Name)
+	assertUintEquals(
+		t,
+		expectedTeam.Managers[0].ManagerID,
+		actualTeam.Managers[0].ManagerID)
+	assertStringEquals(
+		t,
+		expectedTeam.Managers[0].Nickname,
+		actualTeam.Managers[0].Nickname)
+	assertStringEquals(t, expectedTeam.Managers[0].Guid, actualTeam.Managers[0].Guid)
+	assertStringEquals(t, expectedTeam.TeamLogos[0].Size, actualTeam.TeamLogos[0].Size)
+	assertStringEquals(t, expectedTeam.TeamLogos[0].URL, actualTeam.TeamLogos[0].URL)
 }
 
 func assertLeaguesEqual(t *testing.T, expectedLeagues []League, actualLeagues []League) {
 	for i := range expectedLeagues {
-		if expectedLeagues[i].LeagueKey != actualLeagues[i].LeagueKey ||
-			expectedLeagues[i].LeagueID != actualLeagues[i].LeagueID ||
-			expectedLeagues[i].Name != actualLeagues[i].Name {
-			t.Fatalf("Actual league did not equal expected league.\n"+
-				"\texpected: %+v\n\tactual: %+v",
-				expectedLeagues[i],
-				actualLeagues[i])
-		}
+		assertStringEquals(t, expectedLeagues[i].LeagueKey, actualLeagues[i].LeagueKey)
+		assertUintEquals(t, expectedLeagues[i].LeagueID, actualLeagues[i].LeagueID)
+		assertStringEquals(t, expectedLeagues[i].Name, actualLeagues[i].Name)
+		assertIntEquals(t, expectedLeagues[i].CurrentWeek, actualLeagues[i].CurrentWeek)
+		assertIntEquals(t, expectedLeagues[i].StartWeek, actualLeagues[i].StartWeek)
+		assertIntEquals(t, expectedLeagues[i].EndWeek, actualLeagues[i].EndWeek)
+		assertBoolEquals(t, expectedLeagues[i].IsFinished, actualLeagues[i].IsFinished)
+	}
+}
+
+func assertStringEquals(t *testing.T, expected string, actual string) {
+	if actual != expected {
+		t.Fatalf("Unexpected content\n"+
+			"\tactual: %s\n"+
+			"\texpected: %s",
+			actual,
+			expected)
+	}
+}
+
+func assertFloatEquals(t *testing.T, expected float64, actual float64) {
+	if actual != expected {
+		t.Fatalf("Unexpected content\n"+
+			"\tactual: %f\n"+
+			"\texpected: %f",
+			actual,
+			expected)
+	}
+}
+
+func assertUintEquals(t *testing.T, expected uint64, actual uint64) {
+	if actual != expected {
+		t.Fatalf("Unexpected content\n"+
+			"\tactual: %d\n"+
+			"\texpected: %d",
+			actual,
+			expected)
+	}
+}
+
+func assertIntEquals(t *testing.T, expected int, actual int) {
+	if actual != expected {
+		t.Fatalf("Unexpected content\n"+
+			"\tactual: %d\n"+
+			"\texpected: %d",
+			actual,
+			expected)
+	}
+}
+
+func assertBoolEquals(t *testing.T, expected bool, actual bool) {
+	if actual != expected {
+		t.Fatalf("Unexpected content\n"+
+			"\tactual: %t\n"+
+			"\texpected: %t",
+			actual,
+			expected)
 	}
 }
 
@@ -867,42 +885,91 @@ func (m *mockOAuthConsumer) Get(url string, data map[string]string, a *oauth.Acc
 }
 
 //
-// Large XML
+// Test Data
 //
 
+var expectedTeam = Team{
+	TeamKey: "223.l.431.t.1",
+	TeamID:  1,
+	Name:    "Team Name",
+	Managers: []Manager{
+		Manager{
+			ManagerID: 13,
+			Nickname:  "Nickname",
+			Guid:      "1234567890",
+		},
+	},
+	TeamPoints: Points{
+		CoverageType: "week",
+		Week:         16,
+		Total:        123.45,
+	},
+	TeamProjectedPoints: Points{
+		CoverageType: "week",
+		Week:         16,
+		Total:        543.21,
+	},
+	TeamLogos: []TeamLogo{
+		TeamLogo{
+			Size: "medium",
+			URL:  "http://example.com/logo.png",
+		},
+	},
+}
 var teamXMLContent = `
 <?xml version="1.0" encoding="UTF-8"?>
 <fantasy_content xmlns:yahoo="http://www.yahooapis.com/v1/base.rng" xmlns="http://fantasysports.yahooapis.com/fantasy/v2/base.rng" xml:lang="en-US" yahoo:uri="http://fantasysports.yahooapis.com/fantasy/v2/team/223.l.431.t.1" time="426.26690864563ms" copyright="Data provided by Yahoo! and STATS, LLC">
   <team>
-    <team_key>223.l.431.t.1</team_key>
-    <team_id>1</team_id>
-    <name>Team Name</name>
+    <team_key>` + expectedTeam.TeamKey + `</team_key>
+    <team_id>` + fmt.Sprintf("%d", expectedTeam.TeamID) + `</team_id>
+    <name>` + expectedTeam.Name + `</name>
     <url>http://football.fantasysports.yahoo.com/archive/pnfl/2009/431/1</url>
     <team_logos>
       <team_logo>
-        <size>medium</size>
-        <url>http://example.com/logo.png</url>
+        <size>` + expectedTeam.TeamLogos[0].Size + `</size>
+        <url>` + expectedTeam.TeamLogos[0].URL + `</url>
       </team_logo>
     </team_logos>
     <division_id>2</division_id>
     <faab_balance>22</faab_balance>
     <managers>
       <manager>
-        <manager_id>13</manager_id>
-        <nickname>Nickname</nickname>
-        <guid>1234567890</guid>
+        <manager_id>` + fmt.Sprintf("%d", expectedTeam.Managers[0].ManagerID) +
+	`</manager_id>
+        <nickname>` + expectedTeam.Managers[0].Nickname + `</nickname>
+        <guid>` + expectedTeam.Managers[0].Guid + `</guid>
       </manager>
     </managers>
+    <team_points>  
+        <coverage_type>` + expectedTeam.TeamPoints.CoverageType + `</coverage_type>  
+        <week>` + fmt.Sprintf("%d", expectedTeam.TeamPoints.Week) + `</week>  
+        <total>` + fmt.Sprintf("%f", expectedTeam.TeamPoints.Total) + `</total>  
+    </team_points>  
+    <team_projected_points>  
+        <coverage_type>` + expectedTeam.TeamProjectedPoints.CoverageType +
+	`</coverage_type>  
+        <week>` + fmt.Sprintf("%d", expectedTeam.TeamProjectedPoints.Week) + `</week>  
+        <total>` + fmt.Sprintf("%f", expectedTeam.TeamProjectedPoints.Total) + `</total>
+    </team_projected_points> 
   </team>
 </fantasy_content> `
 
+var expectedLeague = League{
+	LeagueKey:   "223.l.431",
+	LeagueID:    341,
+	Name:        "League Name",
+	CurrentWeek: 16,
+	StartWeek:   1,
+	EndWeek:     16,
+	IsFinished:  true,
+}
 var leagueXMLContent = `
     <?xml version="1.0" encoding="UTF-8"?>
     <fantasy_content xml:lang="en-US" yahoo:uri="http://fantasysports.yahooapis.com/fantasy/v2/league/223.l.431" xmlns:yahoo="http://www.yahooapis.com/v1/base.rng" time="181.80584907532ms" copyright="Data provided by Yahoo! and STATS, LLC" xmlns="http://fantasysports.yahooapis.com/fantasy/v2/base.rng">
       <league>
-        <league_key>223.l.431</league_key>
-        <league_id>431</league_id>
-        <name>League Name</name>
+        <league_key>` + expectedLeague.LeagueKey + `</league_key>
+        <league_id>` + fmt.Sprintf("%d", expectedLeague.LeagueID) + `</league_id>
+        <name>` + expectedLeague.Name + `</name>
         <url>http://football.fantasysports.yahoo.com/archive/pnfl/2009/431</url>
         <draft_status>postdraft</draft_status>
         <num_teams>14</num_teams>
@@ -910,9 +977,11 @@ var leagueXMLContent = `
         <weekly_deadline/>
         <league_update_timestamp>1262595518</league_update_timestamp>
         <scoring_type>head</scoring_type>
-        <current_week>16</current_week>
-        <start_week>1</start_week>
-        <end_week>16</end_week>
-        <is_finished>1</is_finished>
+        <current_week>` + fmt.Sprintf("%d", expectedLeague.CurrentWeek) +
+	`</current_week>
+        <start_week>` + fmt.Sprintf("%d", expectedLeague.StartWeek) +
+	`</start_week>
+        <end_week>` + fmt.Sprintf("%d", expectedLeague.EndWeek) + `</end_week>
+        <is_finished>` + fmt.Sprintf("%t", expectedLeague.IsFinished) + `</is_finished>
       </league>
     </fantasy_content>`

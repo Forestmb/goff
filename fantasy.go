@@ -169,6 +169,7 @@ type Team struct {
 	Matchups              []Matchup     `xml:"matchups>matchup"`
 	Roster                Roster        `xml:"roster"`
 	TeamPoints            Points        `xml:"team_points"`
+	TeamProjectedPoints   Points        `xml:"team_projected_points"`
 	TeamStandings         TeamStandings `xml:"team_standings"`
 	Players               []Player      `xml:"players>player"`
 }
