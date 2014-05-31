@@ -16,3 +16,15 @@ https://github.com/Forestmb/goff/blob/master/LICENSE).
 To make sure this build runs before every commit, use:
 
     $ ln -s "$(pwd)/build.sh" .git/hooks/pre-commit
+
+## Debug ##
+
+The `goff/debug` package can be used to help with developing `goff`. It uses
+the OAuth 1.0 consumer provided by `goff` to make arbitrary `GET` request to
+the Yahoo Fantasy Sports APIs and outputs the string XML response. To run:
+
+    $ cd $GOPATH/src/github.com/Forestmb/goff
+    $ go run debug/debug.go --clientKey=<key> --clientSecret=<secret>
+
+The values `key` and `secret` can be obtained after registering your own
+applicaiton: http://developer.yahoo.com/fantasysports/guide/GettingStarted.html

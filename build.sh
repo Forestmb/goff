@@ -4,6 +4,7 @@ set -e
 #     $ ln -s "$(pwd)/build.sh" .git/hooks/pre-commit
  
 package="github.com/Forestmb/goff"
+debug="${package}/debug"
 
 cd "${GOPATH}/src/${package}"
 
@@ -28,4 +29,7 @@ echo "Running go fmt..."
 go fmt ./...
 
 echo "Building..."
-go build  "${package}"
+go build .
+
+cd "${GOPATH}/src/${debug}"
+go build .
