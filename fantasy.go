@@ -57,7 +57,8 @@ const (
 // fantasy football game for that year.
 var yearKeys = map[string]string{
 	"nfl":  NflGameKey,
-	"2013": NflGameKey,
+	"2014": "331",
+	"2013": "314",
 	"2012": "273",
 	"2011": "257",
 	"2010": "242",
@@ -201,7 +202,7 @@ type Manager struct {
 type Points struct {
 	CoverageType string  `xml:"coverage_type"`
 	Season       string  `xml:"season"`
-	Week         uint64  `xml:"week"`
+	Week         int     `xml:"week"`
 	Total        float64 `xml:"total"`
 }
 
