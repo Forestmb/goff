@@ -292,6 +292,8 @@ type Name struct {
 
 // NewCachedOAuthClient creates a new OAuth client that checks and updates the
 // given Cache when retrieving fantasy content.
+//
+// See NewLRUCache
 func NewCachedOAuthClient(
 	cache Cache,
 	consumer OAuthConsumer,
@@ -350,6 +352,8 @@ func (c *Client) RequestCount() int {
 
 // NewLRUCache creates a new Cache that caches content for the given client
 // for up to the maximum duration.
+//
+// See NewCachedOAuthClient
 func NewLRUCache(
 	clientID string,
 	duration time.Duration,
