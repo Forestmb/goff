@@ -1,6 +1,6 @@
 # Changelog #
 
-## 0.2.0 (????-??-??) ##
+## 0.2.0 (2014-08-17) ##
 
 - Added debug package to test OAuth `GET` requests.
 - Fixed support for 2013 leagues.
