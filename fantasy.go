@@ -27,8 +27,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/mrjones/oauth"
+	lru "github.com/youtube/vitess/go/cache"
 )
 
 //
@@ -79,10 +81,6 @@ var yearKeys = map[string]string{
 
 // Client is an application authorized to use the Yahoo fantasy sports API.
 type Client struct {
-	// The amount of requests made to the Yahoo API on behalf of the application
-	// represented by this Client.
-	RequestCount int
-
 	// Provides fantasy content for this application.
 	provider ContentProvider
 }
@@ -90,6 +88,38 @@ type Client struct {
 // ContentProvider returns the data from an API request.
 type ContentProvider interface {
 	Get(url string) (content *FantasyContent, err error)
+	// The amount of requests made to the Yahoo API on behalf of the application
+	// represented by this Client.
+	RequestCount() int
+}
+
+// Cache sets and retrieves fantasy content for request URLs based on the time
+// for which the content was valid
+type Cache interface {
+	Set(url string, time time.Time, content *FantasyContent)
+	Get(url string, time time.Time) (content *FantasyContent, ok bool)
+}
+
+// lruCache implements Cache utilizing a LRU cache and unique keys to cache
+// content for up to a maximum duration.
+type lruCache struct {
+	clientID        string
+	duration        time.Duration
+	durationSeconds int64
+	cache           *lru.LRUCache
+}
+
+// lruCacheValue implements lru.Value to be able to store fantasy content in
+// a LRUCache
+type lruCacheValue struct {
+	content *FantasyContent
+}
+
+// cachedContentProvider implements ContentProvider and caches data from
+// another ContentProvider for a period of time up to a maximum duration.
+type cachedContentProvider struct {
+	delegate ContentProvider
+	cache    Cache
 }
 
 // xmlContentProvider implements ContentProvider and translates XML responses
@@ -104,12 +134,15 @@ type xmlContentProvider struct {
 type httpClient interface {
 	// Makes HTTP request to the API
 	Get(url string) (response *http.Response, err error)
+	// Get the amount of requests made to the API
+	RequestCount() int
 }
 
 // oauthHTTPClient implements httpClient using OAuth 1.0 for authentication
 type oauthHTTPClient struct {
-	token    *oauth.AccessToken
-	consumer OAuthConsumer
+	token        *oauth.AccessToken
+	consumer     OAuthConsumer
+	requestCount int
 }
 
 // OAuthConsumer returns data from an oauth provider
@@ -257,6 +290,27 @@ type Name struct {
 // Client
 //
 
+// NewCachedOAuthClient creates a new OAuth client that checks and updates the
+// given Cache when retrieving fantasy content.
+func NewCachedOAuthClient(
+	cache Cache,
+	consumer OAuthConsumer,
+	accessToken *oauth.AccessToken) *Client {
+
+	return &Client{
+		provider: &cachedContentProvider{
+			delegate: &xmlContentProvider{
+				client: &oauthHTTPClient{
+					token:        accessToken,
+					consumer:     consumer,
+					requestCount: 0,
+				},
+			},
+			cache: cache,
+		},
+	}
+}
+
 // NewOAuthClient creates a Client that uses oauth authentication to communicate with
 // the Yahoo fantasy sports API. The consumer can be created with `GetConsumer` and
 // then used to obtain the access token passed in here.
@@ -264,11 +318,11 @@ func NewOAuthClient(consumer OAuthConsumer, accessToken *oauth.AccessToken) *Cli
 	return &Client{
 		provider: &xmlContentProvider{
 			client: &oauthHTTPClient{
-				token:    accessToken,
-				consumer: consumer,
+				token:        accessToken,
+				consumer:     consumer,
+				requestCount: 0,
 			},
 		},
-		RequestCount: 0,
 	}
 }
 
@@ -284,9 +338,89 @@ func GetConsumer(clientID string, clientSecret string) *oauth.Consumer {
 		})
 }
 
+// RequestCount returns the amount of requests made to the Yahoo API on behalf
+// of the application represented by this Client.
+func (c *Client) RequestCount() int {
+	return c.provider.RequestCount()
+}
+
+//
+// Cache
+//
+
+// NewLRUCache creates a new Cache that caches content for the given client
+// for up to the maximum duration.
+func NewLRUCache(
+	clientID string,
+	duration time.Duration,
+	cache *lru.LRUCache) *lruCache {
+
+	return &lruCache{
+		clientID:        clientID,
+		duration:        duration,
+		durationSeconds: int64(duration.Seconds()),
+		cache:           cache,
+	}
+}
+
+func (l *lruCache) Set(url string, time time.Time, content *FantasyContent) {
+	l.cache.Set(l.getKey(url, time), &lruCacheValue{content: content})
+}
+
+func (l *lruCache) Get(url string, time time.Time) (content *FantasyContent, ok bool) {
+	value, ok := l.cache.Get(l.getKey(url, time))
+	if !ok {
+		return nil, ok
+	}
+	lruCacheValue, ok := value.(*lruCacheValue)
+	if !ok {
+		return nil, ok
+	}
+	return lruCacheValue.content, true
+}
+
+// getKey converts a base key to a key that is unique for the client of the
+// lruCache and the current time period.
+//
+// The created keys have the following format:
+//
+//    <client-id>:<originalKey>:<period>
+//
+// Given a client with ID "client-id-01", original key of "key-01", a current
+// time of "08/17/2014 1:21pm", and a maximum cache duration of 1 hour, this
+// will generate the following key:
+//
+//    client-id-01:key-01:391189
+//
+func (l *lruCache) getKey(originalKey string, time time.Time) string {
+	period := time.Unix() / l.durationSeconds
+	return fmt.Sprintf("%s:%s:%d", l.clientID, originalKey, period)
+}
+
+func (v *lruCacheValue) Size() int {
+	return 1
+}
+
 //
 // ContentProvider
 //
+
+func (p *cachedContentProvider) Get(url string) (*FantasyContent, error) {
+	currentTime := time.Now()
+	content, ok := p.cache.Get(url, currentTime)
+	if !ok {
+		content, err := p.delegate.Get(url)
+		if err == nil {
+			p.cache.Set(url, currentTime, content)
+		}
+		return content, err
+	}
+	return content, nil
+}
+
+func (p *cachedContentProvider) RequestCount() int {
+	return p.delegate.RequestCount()
+}
 
 func (p *xmlContentProvider) Get(url string) (*FantasyContent, error) {
 	response, err := p.client.Get(url)
@@ -310,13 +444,22 @@ func (p *xmlContentProvider) Get(url string) (*FantasyContent, error) {
 	return &content, nil
 }
 
+func (p *xmlContentProvider) RequestCount() int {
+	return p.client.RequestCount()
+}
+
 //
 // httpClient
 //
 
 // Get returns the HTTP response of a GET request to the given URL.
 func (o *oauthHTTPClient) Get(url string) (*http.Response, error) {
+	o.requestCount++
 	return o.consumer.Get(url, map[string]string{}, o.token)
+}
+
+func (o *oauthHTTPClient) RequestCount() int {
+	return o.requestCount
 }
 
 //
@@ -327,7 +470,6 @@ func (o *oauthHTTPClient) Get(url string) (*http.Response, error) {
 //
 // See http://developer.yahoo.com/fantasysports/guide/ for more information
 func (c *Client) GetFantasyContent(url string) (*FantasyContent, error) {
-	c.RequestCount++
 	return c.provider.Get(url)
 }
 

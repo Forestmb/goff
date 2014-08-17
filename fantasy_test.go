@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/mrjones/oauth"
+	lru "github.com/youtube/vitess/go/cache"
 )
 
 //
@@ -26,10 +28,35 @@ func TestNewOAuthClient(t *testing.T) {
 		t.Fatal("No client returned")
 	}
 
-	if client.RequestCount != 0 {
+	if client.RequestCount() != 0 {
 		t.Fatalf("Invalid request count after initialization\n"+
 			"\texpected: 0\n\tactual: %d",
-			client.RequestCount)
+			client.RequestCount())
+	}
+}
+
+//
+// Test NewCachedOAuthClient
+//
+
+func TestNewCachedOAuthClient(t *testing.T) {
+	clientID := "clientID"
+	clientSecret := "clientSecret"
+	consumer := GetConsumer(clientID, clientSecret)
+
+	client := NewCachedOAuthClient(
+		mockCache(),
+		consumer,
+		&oauth.AccessToken{})
+
+	if client == nil {
+		t.Fatal("No client returned")
+	}
+
+	if client.RequestCount() != 0 {
+		t.Fatalf("Invalid request count after initialization\n"+
+			"\texpected: 0\n\tactual: %d",
+			client.RequestCount())
 	}
 }
 
@@ -44,6 +71,171 @@ func TestGetConsumer(t *testing.T) {
 	if consumer == nil {
 		t.Fatal("No consumer returned")
 	}
+}
+
+//
+// Test lruCache
+//
+
+func TestNewLRUCache(t *testing.T) {
+	clientID := "clientID"
+	duration := time.Hour
+	lruCache := &lru.LRUCache{}
+
+	cache := NewLRUCache(clientID, duration, lruCache)
+
+	if cache == nil {
+		t.Fatal("No cache returned")
+	}
+
+	if cache.clientID != clientID {
+		t.Fatalf("Unexpected client ID in cache\n\t"+
+			"expected: %s\n\tactual: %s",
+			clientID,
+			cache.clientID)
+	}
+
+	if cache.duration != duration {
+		t.Fatalf("Unexpected duration in cache\n\t"+
+			"expected: %+v\n\tactual: %+v",
+			duration,
+			cache.duration)
+	}
+
+	if cache.cache != lruCache {
+		t.Fatalf("Unexpected LRU cache in cache\n\t"+
+			"expected: %+v\n\tactual: %+v",
+			lruCache,
+			cache.cache)
+	}
+}
+
+func TestGetKey(t *testing.T) {
+	clientID := "clientID"
+	duration := time.Hour
+	lruCache := &lru.LRUCache{}
+	cache := NewLRUCache(clientID, duration, lruCache)
+
+	originalKey := "key"
+	time := time.Unix(1408281677, 0)
+	expectedKey := fmt.Sprintf("%s:%s:%s", clientID, originalKey, "391189")
+
+	key := cache.getKey(originalKey, time)
+
+	if key != expectedKey {
+		t.Fatalf("Did not received expected key\n\texpected: %s"+
+			"\n\tactual: %s",
+			expectedKey,
+			key)
+	}
+}
+
+func TestGetNoContent(t *testing.T) {
+	clientID := "clientID"
+	duration := time.Hour
+	lruCache := lru.NewLRUCache(10)
+	cache := NewLRUCache(clientID, duration, lruCache)
+
+	time := time.Unix(1408281677, 0)
+	content, ok := cache.Get("http://example.com/fantasy", time)
+
+	if ok {
+		t.Fatalf("Cache returned content when it should not have been cached"+
+			"content: %+v",
+			content)
+	}
+}
+
+func TestGetContentOfWrongType(t *testing.T) {
+	clientID := "clientID"
+	duration := time.Hour
+	lruCache := lru.NewLRUCache(10)
+	cache := NewLRUCache(clientID, duration, lruCache)
+
+	time := time.Unix(1408281677, 0)
+	url := "http://example.com/fantasy"
+
+	cacheKey := cache.getKey(url, time)
+	lruCache.Set(cacheKey, mockedValue{})
+
+	content, ok := cache.Get(url, time)
+	if ok {
+		t.Fatalf("Cache returned content when it the wrong type had been cached"+
+			"content: %+v",
+			content)
+	}
+}
+
+func TestGetWithContent(t *testing.T) {
+	clientID := "clientID"
+	duration := time.Hour
+	lruCache := lru.NewLRUCache(10)
+	cache := NewLRUCache(clientID, duration, lruCache)
+
+	time := time.Unix(1408281677, 0)
+	url := "http://example.com/fantasy"
+
+	cacheKey := cache.getKey(url, time)
+	expectedContent := createLeagueList(League{LeagueKey: "123"})
+	lruCache.Set(cacheKey, &lruCacheValue{content: expectedContent})
+
+	content, ok := cache.Get(url, time)
+	if !ok {
+		t.Fatal("Cache did not return content")
+	}
+
+	if content != expectedContent {
+		t.Fatalf("Cache did not return expected content\n\texpected: %+v"+
+			"\n\tactual: %+v",
+			expectedContent,
+			content)
+	}
+}
+
+func TestSet(t *testing.T) {
+	clientID := "clientID"
+	duration := time.Hour
+	lruCache := lru.NewLRUCache(10)
+	cache := NewLRUCache(clientID, duration, lruCache)
+
+	time := time.Unix(1408281677, 0)
+	url := "http://example.com/fantasy"
+	expectedContent := createLeagueList(League{LeagueKey: "123"})
+	cache.Set(url, time, expectedContent)
+
+	cacheKey := cache.getKey(url, time)
+	value, ok := lruCache.Get(cacheKey)
+	if !ok {
+		t.Fatal("Content not set in LRU cache correctly")
+	}
+
+	lruCacheValue, ok := value.(*lruCacheValue)
+	if !ok {
+		t.Fatalf("Incorrect type used in LRU cache: %T", value)
+	}
+
+	if lruCacheValue.content != expectedContent {
+		t.Fatalf("Unepxected content in cache\n\texpected: %+v\n\t"+
+			"actual: %+v",
+			expectedContent,
+			lruCacheValue.content)
+	}
+}
+
+func TestLRUCacheValueSize(t *testing.T) {
+	value := lruCacheValue{}
+	if value.Size() != 1 {
+		t.Fatalf("Incorrect size returned for LRU cache value\n\t"+
+			"expected: %d\n\tactual: %d",
+			1,
+			value.Size())
+	}
+}
+
+type mockedValue struct{}
+
+func (m mockedValue) Size() int {
+	return 1
 }
 
 //
@@ -82,6 +274,114 @@ func TestOAuthHTTPClientError(t *testing.T) {
 	_, err := client.Get("http://example.com")
 	if err == nil {
 		t.Fatalf("no error returned from client when consumer failed")
+	}
+}
+
+//
+// Test cachedContentProvider
+//
+
+func TestCachedGetNoContentInCache(t *testing.T) {
+	cache := mockCache()
+	expectedContent := createLeagueList(League{LeagueKey: "123"})
+	delegate := &mockedContentProvider{content: expectedContent, err: nil}
+	provider := &cachedContentProvider{
+		delegate: delegate,
+		cache:    cache,
+	}
+
+	url := "http://example.com/fantasy"
+	actualContent, err := provider.Get(url)
+
+	if actualContent != expectedContent {
+		t.Fatalf("Actual content did not equal expected content\n"+
+			"\texpected: %+v\n\tactual: %+v",
+			expectedContent,
+			actualContent)
+	}
+
+	if cache.lastSetURL != url {
+		t.Fatalf("Cache was not updated for correct URL\n\texpected: %s\n\t"+
+			"actual: %s",
+			url,
+			cache.lastSetURL)
+	}
+
+	if cache.lastSetContent != expectedContent {
+		t.Fatalf("Cache was not updated with correct Content\n\texpected: %+v"+
+			"\n\tactual: %+v",
+			expectedContent,
+			cache.lastSetContent)
+	}
+
+	if err != nil {
+		t.Fatalf("Cached provider returned error: %s", err)
+	}
+}
+
+func TestCachedGetWithContentInCache(t *testing.T) {
+	cache := mockCache()
+	expectedContent := createLeagueList(League{LeagueKey: "123"})
+	unexpectedContent := createLeagueList(League{LeagueKey: "456"})
+	delegate := &mockedContentProvider{content: unexpectedContent, err: nil}
+	provider := &cachedContentProvider{
+		delegate: delegate,
+		cache:    cache,
+	}
+
+	url := "http://example.com/fantasy"
+	cache.data[url] = expectedContent
+	actualContent, err := provider.Get(url)
+
+	if actualContent != expectedContent {
+		t.Fatalf("Actual content did not equal expected content\n"+
+			"\texpected: %+v\n\tactual: %+v",
+			expectedContent,
+			actualContent)
+	}
+
+	if cache.lastSetURL != "" ||
+		!cache.lastSetTime.IsZero() ||
+		cache.lastSetContent != nil {
+		t.Fatalf("Cache was updated for cached data\n\turl: %s\n\t"+
+			"time: %+v\n\tcontent: %+v",
+			cache.lastSetURL,
+			cache.lastSetTime,
+			cache.lastSetContent)
+	}
+
+	if err != nil {
+		t.Fatalf("Cached provider returned error: %s", err)
+	}
+}
+
+func TestCachedGetNoContentInCacheErrorReturnedCacheNotSet(t *testing.T) {
+	cache := mockCache()
+	err := errors.New("error")
+	delegate := &mockedContentProvider{content: nil, err: err}
+	provider := &cachedContentProvider{
+		delegate: delegate,
+		cache:    cache,
+	}
+
+	url := "http://example.com/fantasy"
+	_, actualErr := provider.Get(url)
+
+	if actualErr != err {
+		t.Fatalf("Cached provider did not return expected error: \n\t"+
+			"expected: %s\n\tactual: %s",
+			err,
+			actualErr)
+	}
+
+	if cache.lastSetURL != "" ||
+		!cache.lastSetTime.IsZero() ||
+		cache.lastSetContent != nil {
+		t.Fatalf("Cache was updated after error\n\turl: %s\n\t"+
+			"time: %+v\n\tcontent: %+v",
+			cache.lastSetURL,
+			cache.lastSetTime,
+			cache.lastSetContent)
 	}
 }
 
@@ -255,22 +555,22 @@ func TestGetFantasyContentError(t *testing.T) {
 func TestGetFantasyContentRequestcount(t *testing.T) {
 	client := mockClient(&FantasyContent{}, nil)
 	client.GetFantasyContent("http://example.com/RequestOne")
-	if client.RequestCount != 1 {
+	if client.RequestCount() != 1 {
 		t.Fatalf("Fantasy client returned incorrect request count.\n"+
 			"\texpected: 1\n\tactual: %d",
-			client.RequestCount)
+			client.RequestCount())
 	}
 	client.GetFantasyContent("http://example.com/RequestTwo")
-	if client.RequestCount != 2 {
+	if client.RequestCount() != 2 {
 		t.Fatalf("Fantasy client returned incorrect request count.\n"+
 			"\texpected: 2\n\tactual: %d",
-			client.RequestCount)
+			client.RequestCount())
 	}
 	client.GetFantasyContent("http://example.com/RequestOne")
-	if client.RequestCount != 3 {
+	if client.RequestCount() != 3 {
 		t.Fatalf("Fantasy client returned incorrect request count.\n"+
 			"\texpected: 3\n\tactual: %d",
-			client.RequestCount)
+			client.RequestCount())
 	}
 }
 
@@ -358,8 +658,7 @@ func TestGetUserLeaguesMapsYear(t *testing.T) {
 	content := createLeagueList(League{LeagueKey: "123"})
 	provider := &mockedContentProvider{content: content, err: nil}
 	client := &Client{
-		RequestCount: 0,
-		provider:     provider,
+		provider: provider,
 	}
 
 	client.GetUserLeagues("2013")
@@ -535,8 +834,7 @@ func TestGetPlayerStatsParams(t *testing.T) {
 		err: nil,
 	}
 	client := &Client{
-		RequestCount: 0,
-		provider:     provider,
+		provider: provider,
 	}
 
 	week := 10
@@ -835,8 +1133,7 @@ func createLeagueList(leagues ...League) *FantasyContent {
 // whenever client.GetFantasyContent is called.
 func mockClient(f *FantasyContent, e error) *Client {
 	return &Client{
-		RequestCount: 0,
-		provider:     &mockedContentProvider{content: f, err: e},
+		provider: &mockedContentProvider{content: f, err: e, count: 0},
 	}
 }
 
@@ -846,11 +1143,50 @@ type mockedContentProvider struct {
 	lastGetURL string
 	content    *FantasyContent
 	err        error
+	count      int
 }
 
 func (m *mockedContentProvider) Get(url string) (*FantasyContent, error) {
 	m.lastGetURL = url
+	m.count++
 	return m.content, m.err
+}
+
+func (m *mockedContentProvider) RequestCount() int {
+	return m.count
+}
+
+type mockedCache struct {
+	data           map[string](*FantasyContent)
+	lastSetURL     string
+	lastSetTime    time.Time
+	lastSetContent *FantasyContent
+
+	lastGetURL  string
+	lastGetTime time.Time
+}
+
+func mockCache() *mockedCache {
+	return &mockedCache{
+		data: make(map[string](*FantasyContent)),
+	}
+}
+
+func (c *mockedCache) Set(url string, time time.Time, content *FantasyContent) {
+	c.lastSetURL = url
+	c.lastSetTime = time
+	c.lastSetContent = content
+}
+
+func (c *mockedCache) Get(
+	url string,
+	time time.Time) (content *FantasyContent, ok bool) {
+
+	c.lastGetURL = url
+	c.lastGetTime = time
+
+	content, ok = c.data[url]
+	return content, ok
 }
 
 // mockHTTPClient creates a httpClient that always returns the given response
@@ -859,6 +1195,7 @@ func mockHTTPClient(resp *http.Response, e error) httpClient {
 	return &mockedHTTPClient{
 		response: resp,
 		err:      e,
+		count:    0,
 	}
 }
 
@@ -866,11 +1203,17 @@ type mockedHTTPClient struct {
 	lastGetURL string
 	response   *http.Response
 	err        error
+	count      int
 }
 
 func (m *mockedHTTPClient) Get(url string) (resp *http.Response, err error) {
 	m.lastGetURL = url
+	m.count++
 	return m.response, m.err
+}
+
+func (m *mockedHTTPClient) RequestCount() int {
+	return m.count
 }
 
 type mockOAuthConsumer struct {

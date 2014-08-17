@@ -5,6 +5,7 @@
 - Added debug package to test OAuth `GET` requests.
 - Fixed support for 2013 leagues.
 - Added support for 2014 leagues.
+- Added optional caching of fantasy content.
 
 ## 0.1.0 (2014-03-02) ##
 

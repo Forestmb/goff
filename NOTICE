@@ -26,3 +26,9 @@ programming language.
 
     * LICENSE: MIT
     * HOMEPAGE: https://github.com/mrjones/oauth
+
+This product contains a dependency on Vitess, a set of servers and tools which
+facilitate scaling of MySQL databases for large scale web services.
+
+    * LICENSE: BSD-style
+    * HOMEPAGE: https://github.com/youtube/vitess
