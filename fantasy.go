@@ -182,6 +182,7 @@ type League struct {
 	Name        string   `xml:"name"`
 	Players     []Player `xml:"players>player"`
 	Teams       []Team   `xml:"teams>team"`
+	DraftStatus string   `xml:"draft_status"`
 	CurrentWeek int      `xml:"current_week"`
 	StartWeek   int      `xml:"start_week"`
 	EndWeek     int      `xml:"end_week"`

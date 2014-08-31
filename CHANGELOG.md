@@ -1,5 +1,9 @@
 # Changelog #
 
+## 0.3.0 (????-??-??) ##
+
+- Added `DraftStatus` to `League`
+
 ## 0.2.0 (2014-08-17) ##
 
 - Added debug package to test OAuth `GET` requests.
