@@ -262,12 +262,51 @@ func TestOAuthHTTPClient(t *testing.T) {
 	}
 }
 
+func TestOAuthHTTPClientMultipleErrorsConsumerKeyUnknown(t *testing.T) {
+	expected := &http.Response{}
+	client := &oauthHTTPClient{
+		token: &oauth.AccessToken{},
+		consumer: &mockOAuthConsumer{
+			Response:   expected,
+			Error:      errors.New("consumer_key_unknown"),
+			ErrorCount: 5,
+		},
+	}
+
+	_, err := client.Get("http://example.com")
+	if err == nil {
+		t.Fatalf("no error returned from client when consumer failed")
+	}
+}
+
+func TestOAuthHTTPClientInitialErrorConsumerKeyUnknown(t *testing.T) {
+	expected := &http.Response{}
+	client := &oauthHTTPClient{
+		token: &oauth.AccessToken{},
+		consumer: &mockOAuthConsumer{
+			Response:   expected,
+			Error:      errors.New("consumer_key_unknown"),
+			ErrorCount: 4,
+		},
+	}
+
+	response, err := client.Get("http://example.com")
+	if err != nil {
+		t.Fatalf("error retrieving response: %s", err)
+	}
+
+	if response != expected {
+		t.Fatalf("received unexpected response from client")
+	}
+}
+
 func TestOAuthHTTPClientError(t *testing.T) {
 	client := &oauthHTTPClient{
 		token: &oauth.AccessToken{},
 		consumer: &mockOAuthConsumer{
-			Response: &http.Response{},
-			Error:    errors.New("error"),
+			Response:   &http.Response{},
+			Error:      errors.New("error"),
+			ErrorCount: 5,
 		},
 	}
 
@@ -1217,14 +1256,22 @@ func (m *mockedHTTPClient) RequestCount() int {
 }
 
 type mockOAuthConsumer struct {
-	Response *http.Response
-	Error    error
-	LastURL  string
+	Response   *http.Response
+	Error      error
+	ErrorCount int
+	LastURL    string
+
+	RequestCount int
 }
 
 func (m *mockOAuthConsumer) Get(url string, data map[string]string, a *oauth.AccessToken) (*http.Response, error) {
 	m.LastURL = url
-	return m.Response, m.Error
+	m.RequestCount++
+	err := m.Error
+	if m.RequestCount > m.ErrorCount {
+		err = nil
+	}
+	return m.Response, err
 }
 
 //

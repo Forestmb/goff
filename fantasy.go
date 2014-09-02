@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/mrjones/oauth"
@@ -460,7 +461,22 @@ func (p *xmlContentProvider) RequestCount() int {
 // Get returns the HTTP response of a GET request to the given URL.
 func (o *oauthHTTPClient) Get(url string) (*http.Response, error) {
 	o.requestCount++
-	return o.consumer.Get(url, map[string]string{}, o.token)
+	response, err := o.consumer.Get(url, map[string]string{}, o.token)
+
+	// Known issue where "consumer_key_unknown" is returned for valid
+	// consumer keys. If this happens, try re-requesting the content a few
+	// times to see if it fixes itself
+	//
+	// See https://developer.yahoo.com/forum/OAuth-General-Discussion-YDN-SDKs/oauth-problem-consumer-key-unknown-/1375188859720-5cea9bdb-0642-4606-9fd5-c5f369112959
+	for attempts := 0; attempts < 4 &&
+		err != nil &&
+		strings.Contains(err.Error(), "consumer_key_unknown"); attempts++ {
+
+		o.requestCount++
+		response, err = o.consumer.Get(url, map[string]string{}, o.token)
+	}
+
+	return response, err
 }
 
 func (o *oauthHTTPClient) RequestCount() int {
