@@ -188,6 +188,7 @@ type League struct {
 	StartWeek   int      `xml:"start_week"`
 	EndWeek     int      `xml:"end_week"`
 	IsFinished  bool     `xml:"is_finished"`
+	Standings   []Team   `xml:"standings>teams>team"`
 }
 
 // A Team is a participant in exactly one league.
@@ -561,6 +562,18 @@ func (c *Client) GetTeamRoster(teamKey string, week int) ([]Player, error) {
 	}
 
 	return content.Team.Roster.Players, nil
+}
+
+// GetLeagueStandings gets a league containing the current standings.
+func (c *Client) GetLeagueStandings(leagueKey string) (*League, error) {
+	content, err := c.GetFantasyContent(
+		fmt.Sprintf("%s/league/%s/standings",
+			YahooBaseURL,
+			leagueKey))
+	if err != nil {
+		return nil, err
+	}
+	return &content.League, nil
 }
 
 // GetAllTeamStats gets teams stats for a given week.

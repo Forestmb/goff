@@ -783,6 +783,30 @@ func TestGetLeagueMetadataError(t *testing.T) {
 }
 
 //
+// Test GetLeagueStandings
+//
+
+func TestGetLeagueStandings(t *testing.T) {
+	client := mockClient(&FantasyContent{League: expectedLeague}, nil)
+
+	actual, err := client.GetLeagueStandings(expectedLeague.LeagueKey)
+	if err != nil {
+		t.Fatalf("Client returned unexpected error: %s", err)
+	}
+
+	assertLeaguesEqual(t, []League{expectedLeague}, []League{*actual})
+}
+
+func TestGetLeagueStandingsError(t *testing.T) {
+	client := mockClient(&FantasyContent{League: expectedLeague}, errors.New("error"))
+
+	_, err := client.GetLeagueStandings(expectedLeague.LeagueKey)
+	if err == nil {
+		t.Fatalf("Client did not return  error.")
+	}
+}
+
+//
 // Test GetPlayersStats
 //
 
