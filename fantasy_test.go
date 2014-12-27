@@ -88,25 +88,25 @@ func TestNewLRUCache(t *testing.T) {
 		t.Fatal("No cache returned")
 	}
 
-	if cache.clientID != clientID {
+	if cache.ClientID != clientID {
 		t.Fatalf("Unexpected client ID in cache\n\t"+
 			"expected: %s\n\tactual: %s",
 			clientID,
-			cache.clientID)
+			cache.ClientID)
 	}
 
-	if cache.duration != duration {
+	if cache.Duration != duration {
 		t.Fatalf("Unexpected duration in cache\n\t"+
 			"expected: %+v\n\tactual: %+v",
 			duration,
-			cache.duration)
+			cache.Duration)
 	}
 
-	if cache.cache != lruCache {
+	if cache.Cache != lruCache {
 		t.Fatalf("Unexpected LRU cache in cache\n\t"+
 			"expected: %+v\n\tactual: %+v",
 			lruCache,
-			cache.cache)
+			cache.Cache)
 	}
 }
 
@@ -177,7 +177,7 @@ func TestGetWithContent(t *testing.T) {
 
 	cacheKey := cache.getKey(url, time)
 	expectedContent := createLeagueList(League{LeagueKey: "123"})
-	lruCache.Set(cacheKey, &lruCacheValue{content: expectedContent})
+	lruCache.Set(cacheKey, &LRUCacheValue{content: expectedContent})
 
 	content, ok := cache.Get(url, time)
 	if !ok {
@@ -209,7 +209,7 @@ func TestSet(t *testing.T) {
 		t.Fatal("Content not set in LRU cache correctly")
 	}
 
-	lruCacheValue, ok := value.(*lruCacheValue)
+	lruCacheValue, ok := value.(*LRUCacheValue)
 	if !ok {
 		t.Fatalf("Incorrect type used in LRU cache: %T", value)
 	}
@@ -223,7 +223,7 @@ func TestSet(t *testing.T) {
 }
 
 func TestLRUCacheValueSize(t *testing.T) {
-	value := lruCacheValue{}
+	value := LRUCacheValue{}
 	if value.Size() != 1 {
 		t.Fatalf("Incorrect size returned for LRU cache value\n\t"+
 			"expected: %d\n\tactual: %d",
@@ -697,7 +697,7 @@ func TestGetUserLeaguesMapsYear(t *testing.T) {
 	content := createLeagueList(League{LeagueKey: "123"})
 	provider := &mockedContentProvider{content: content, err: nil}
 	client := &Client{
-		provider: provider,
+		Provider: provider,
 	}
 
 	client.GetUserLeagues("2013")
@@ -706,7 +706,7 @@ func TestGetUserLeaguesMapsYear(t *testing.T) {
 
 	year := "2010"
 	client.GetUserLeagues(year)
-	assertURLContainsParam(t, provider.lastGetURL, yearParam, yearKeys[year])
+	assertURLContainsParam(t, provider.lastGetURL, yearParam, YearKeys[year])
 
 	_, err := client.GetUserLeagues("1900")
 	if err == nil {
@@ -897,7 +897,7 @@ func TestGetPlayerStatsParams(t *testing.T) {
 		err: nil,
 	}
 	client := &Client{
-		provider: provider,
+		Provider: provider,
 	}
 
 	week := 10
@@ -1016,7 +1016,7 @@ func TestGetAllTeamStatsParam(t *testing.T) {
 	}
 	week := 12
 	provider := &mockedContentProvider{content: content, err: nil}
-	client := &Client{provider: provider}
+	client := &Client{Provider: provider}
 	client.GetAllTeamStats("123", week)
 	assertURLContainsParam(
 		t,
@@ -1107,7 +1107,7 @@ func assertTeamsEqual(t *testing.T, expectedTeam *Team, actualTeam *Team) {
 		t,
 		expectedTeam.Managers[0].Nickname,
 		actualTeam.Managers[0].Nickname)
-	assertStringEquals(t, expectedTeam.Managers[0].Guid, actualTeam.Managers[0].Guid)
+	assertStringEquals(t, expectedTeam.Managers[0].GUID, actualTeam.Managers[0].GUID)
 	assertStringEquals(t, expectedTeam.TeamLogos[0].Size, actualTeam.TeamLogos[0].Size)
 	assertStringEquals(t, expectedTeam.TeamLogos[0].URL, actualTeam.TeamLogos[0].URL)
 }
@@ -1196,12 +1196,12 @@ func createLeagueList(leagues ...League) *FantasyContent {
 // whenever client.GetFantasyContent is called.
 func mockClient(f *FantasyContent, e error) *Client {
 	return &Client{
-		provider: &mockedContentProvider{content: f, err: e, count: 0},
+		Provider: &mockedContentProvider{content: f, err: e, count: 0},
 	}
 }
 
-// mockedContentProvider creates a goff.contentProvider that returns the
-// given content and error whenever provider.Get is called.
+// mockedContentProvider creates a goff.ContentProvider that returns the
+// given content and error whenever Provider.Get is called.
 type mockedContentProvider struct {
 	lastGetURL string
 	content    *FantasyContent
@@ -1310,7 +1310,7 @@ var expectedTeam = Team{
 		Manager{
 			ManagerID: 13,
 			Nickname:  "Nickname",
-			Guid:      "1234567890",
+			GUID:      "1234567890",
 		},
 	},
 	TeamPoints: Points{
@@ -1351,7 +1351,7 @@ var teamXMLContent = `
         <manager_id>` + fmt.Sprintf("%d", expectedTeam.Managers[0].ManagerID) +
 	`</manager_id>
         <nickname>` + expectedTeam.Managers[0].Nickname + `</nickname>
-        <guid>` + expectedTeam.Managers[0].Guid + `</guid>
+        <guid>` + expectedTeam.Managers[0].GUID + `</guid>
       </manager>
     </managers>
     <team_points>  

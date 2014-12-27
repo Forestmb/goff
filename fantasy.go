@@ -56,9 +56,9 @@ const (
 	YahooGetTokenURL = "https://api.login.yahoo.com/oauth/v2/get_token"
 )
 
-// yearKeys is map of a string year to the string Yahoo uses to identify the
+// YearKeys is map of a string year to the string Yahoo uses to identify the
 // fantasy football game for that year.
-var yearKeys = map[string]string{
+var YearKeys = map[string]string{
 	"nfl":  NflGameKey,
 	"2014": "331",
 	"2013": "314",
@@ -83,7 +83,7 @@ var yearKeys = map[string]string{
 // Client is an application authorized to use the Yahoo fantasy sports API.
 type Client struct {
 	// Provides fantasy content for this application.
-	provider ContentProvider
+	Provider ContentProvider
 }
 
 // ContentProvider returns the data from an API request.
@@ -97,22 +97,26 @@ type ContentProvider interface {
 // Cache sets and retrieves fantasy content for request URLs based on the time
 // for which the content was valid
 type Cache interface {
+	// Sets the content retrieved for the URL at the given time
 	Set(url string, time time.Time, content *FantasyContent)
+
+	// Gets the content for the URL given a time for which the content should
+	// be valid
 	Get(url string, time time.Time) (content *FantasyContent, ok bool)
 }
 
-// lruCache implements Cache utilizing a LRU cache and unique keys to cache
+// LRUCache implements Cache utilizing a LRU cache and unique keys to cache
 // content for up to a maximum duration.
-type lruCache struct {
-	clientID        string
-	duration        time.Duration
-	durationSeconds int64
-	cache           *lru.LRUCache
+type LRUCache struct {
+	ClientID        string
+	Duration        time.Duration
+	DurationSeconds int64
+	Cache           *lru.LRUCache
 }
 
-// lruCacheValue implements lru.Value to be able to store fantasy content in
+// LRUCacheValue implements lru.Value to be able to store fantasy content in
 // a LRUCache
-type lruCacheValue struct {
+type LRUCacheValue struct {
 	content *FantasyContent
 }
 
@@ -229,7 +233,7 @@ type Matchup struct {
 type Manager struct {
 	ManagerID      uint64 `xml:"manager_id"`
 	Nickname       string `xml:"nickname"`
-	Guid           string `xml:"guid"`
+	GUID           string `xml:"guid"`
 	IsCurrentLogin bool   `xml:"is_current_login"`
 }
 
@@ -303,7 +307,7 @@ func NewCachedOAuthClient(
 	accessToken *oauth.AccessToken) *Client {
 
 	return &Client{
-		provider: &cachedContentProvider{
+		Provider: &cachedContentProvider{
 			delegate: &xmlContentProvider{
 				client: &oauthHTTPClient{
 					token:        accessToken,
@@ -321,7 +325,7 @@ func NewCachedOAuthClient(
 // then used to obtain the access token passed in here.
 func NewOAuthClient(consumer OAuthConsumer, accessToken *oauth.AccessToken) *Client {
 	return &Client{
-		provider: &xmlContentProvider{
+		Provider: &xmlContentProvider{
 			client: &oauthHTTPClient{
 				token:        accessToken,
 				consumer:     consumer,
@@ -346,7 +350,7 @@ func GetConsumer(clientID string, clientSecret string) *oauth.Consumer {
 // RequestCount returns the amount of requests made to the Yahoo API on behalf
 // of the application represented by this Client.
 func (c *Client) RequestCount() int {
-	return c.provider.RequestCount()
+	return c.Provider.RequestCount()
 }
 
 //
@@ -360,26 +364,30 @@ func (c *Client) RequestCount() int {
 func NewLRUCache(
 	clientID string,
 	duration time.Duration,
-	cache *lru.LRUCache) *lruCache {
+	cache *lru.LRUCache) *LRUCache {
 
-	return &lruCache{
-		clientID:        clientID,
-		duration:        duration,
-		durationSeconds: int64(duration.Seconds()),
-		cache:           cache,
+	return &LRUCache{
+		ClientID:        clientID,
+		Duration:        duration,
+		DurationSeconds: int64(duration.Seconds()),
+		Cache:           cache,
 	}
 }
 
-func (l *lruCache) Set(url string, time time.Time, content *FantasyContent) {
-	l.cache.Set(l.getKey(url, time), &lruCacheValue{content: content})
+// Set specifies that the given content was retrieved for the given URL at the
+// given time. The content for that URL will be available by LRUCache.Get from
+// the given 'time' up to 'time + l.Duration'
+func (l *LRUCache) Set(url string, time time.Time, content *FantasyContent) {
+	l.Cache.Set(l.getKey(url, time), &LRUCacheValue{content: content})
 }
 
-func (l *lruCache) Get(url string, time time.Time) (content *FantasyContent, ok bool) {
-	value, ok := l.cache.Get(l.getKey(url, time))
+// Get the content for the given URL at the given time.
+func (l *LRUCache) Get(url string, time time.Time) (content *FantasyContent, ok bool) {
+	value, ok := l.Cache.Get(l.getKey(url, time))
 	if !ok {
 		return nil, ok
 	}
-	lruCacheValue, ok := value.(*lruCacheValue)
+	lruCacheValue, ok := value.(*LRUCacheValue)
 	if !ok {
 		return nil, ok
 	}
@@ -387,7 +395,7 @@ func (l *lruCache) Get(url string, time time.Time) (content *FantasyContent, ok 
 }
 
 // getKey converts a base key to a key that is unique for the client of the
-// lruCache and the current time period.
+// LRUCache and the current time period.
 //
 // The created keys have the following format:
 //
@@ -399,12 +407,15 @@ func (l *lruCache) Get(url string, time time.Time) (content *FantasyContent, ok 
 //
 //    client-id-01:key-01:391189
 //
-func (l *lruCache) getKey(originalKey string, time time.Time) string {
-	period := time.Unix() / l.durationSeconds
-	return fmt.Sprintf("%s:%s:%d", l.clientID, originalKey, period)
+func (l *LRUCache) getKey(originalKey string, time time.Time) string {
+	period := time.Unix() / l.DurationSeconds
+	return fmt.Sprintf("%s:%s:%d", l.ClientID, originalKey, period)
 }
 
-func (v *lruCacheValue) Size() int {
+// Size always returns '1'. All LRU cache values have the same size, meaning
+// the backing lru.LRUCache will prune strictly based on number of cached
+// content and not the total size in memory.
+func (v *LRUCacheValue) Size() int {
 	return 1
 }
 
@@ -492,7 +503,7 @@ func (o *oauthHTTPClient) RequestCount() int {
 //
 // See http://developer.yahoo.com/fantasysports/guide/ for more information
 func (c *Client) GetFantasyContent(url string) (*FantasyContent, error) {
-	return c.provider.Get(url)
+	return c.Provider.Get(url)
 }
 
 //
@@ -502,7 +513,7 @@ func (c *Client) GetFantasyContent(url string) (*FantasyContent, error) {
 // GetUserLeagues returns a list of the current user's leagues for the given
 // year.
 func (c *Client) GetUserLeagues(year string) ([]League, error) {
-	yearKey, ok := yearKeys[year]
+	yearKey, ok := YearKeys[year]
 	if !ok {
 		return nil, fmt.Errorf("data not available for year=%s", year)
 	}
