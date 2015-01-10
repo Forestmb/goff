@@ -1,6 +1,6 @@
 # Changelog #
 
-## 0.3.0 (TBD) ##
+## 0.3.0 (2015-01-09) ##
 
 - Added `DraftStatus` to `League`.
 - Added `Standings` to `League` and `GetLeagueStandings` function to `Client`.
