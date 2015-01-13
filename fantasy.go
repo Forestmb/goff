@@ -56,6 +56,10 @@ const (
 	YahooGetTokenURL = "https://api.login.yahoo.com/oauth/v2/get_token"
 )
 
+// ErrAccessDenied is returned when the user does not have permision to
+// access the requested resource.
+var ErrAccessDenied = errors.New("User does not have permission to access the requested resource")
+
 // YearKeys is map of a string year to the string Yahoo uses to identify the
 // fantasy football game for that year.
 var YearKeys = map[string]string{
@@ -486,6 +490,13 @@ func (o *oauthHTTPClient) Get(url string) (*http.Response, error) {
 
 		o.requestCount++
 		response, err = o.consumer.Get(url, map[string]string{}, o.token)
+	}
+
+	if err != nil &&
+		strings.Contains(
+			err.Error(),
+			"You are not allowed to view this page") {
+		err = ErrAccessDenied
 	}
 
 	return response, err

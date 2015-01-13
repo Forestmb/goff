@@ -316,6 +316,28 @@ func TestOAuthHTTPClientError(t *testing.T) {
 	}
 }
 
+func TestOAuthHTTPClientAccessDeniedError(t *testing.T) {
+	client := &oauthHTTPClient{
+		token: &oauth.AccessToken{},
+		consumer: &mockOAuthConsumer{
+			Response:   nil,
+			Error:      errors.New("You are not allowed to view this page"),
+			ErrorCount: 1,
+		},
+	}
+
+	content, actualErr := client.Get("http://example.com")
+	if content != nil {
+		t.Fatalf("OAauth HTTP client returned unexpected content: %+v", content)
+	}
+
+	if actualErr != ErrAccessDenied {
+		t.Fatalf("Unexpected error returned:\n\tExpected: %s\n\tActual: %s",
+			ErrAccessDenied,
+			actualErr)
+	}
+}
+
 //
 // Test cachedContentProvider
 //
@@ -588,6 +610,12 @@ func TestGetFantasyContentError(t *testing.T) {
 
 	if actualErr == nil {
 		t.Fatal("Nil error returned.")
+	}
+
+	if actualErr != expectedErr {
+		t.Fatalf("Unexpected error returned:\n\tExpected: %s\n\tActual: %s",
+			expectedErr,
+			actualErr)
 	}
 }
 
