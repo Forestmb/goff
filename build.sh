@@ -3,20 +3,17 @@ set -e
 # To run this before every commit, use: 
 #     $ ln -s "$(pwd)/build.sh" .git/hooks/pre-commit
  
-package="github.com/Forestmb/goff"
-debug="${package}/debug"
+dir="$(dirname "$(readlink -f "$0")")"
+cd "${dir}"
 
-cd "${GOPATH}/src/${package}"
+export PATH="${GOPATH}/bin:${PATH}"
 
 echo "Running go get..."
 go get
 
-echo "Running tests..."
-go test -v ./...
-
 echo "Running golint..."
 go get github.com/golang/lint/golint
-$GOPATH/bin/golint .
+golint .
 
 echo "Running go vet..."
 go vet .
@@ -28,8 +25,9 @@ $GOPATH/bin/goimports -w .
 echo "Running go fmt..."
 go fmt ./...
 
-echo "Building..."
-go build .
+echo "Running tests..."
+go test -v -covermode=count -coverprofile="profile.cov"
+go tool cover -func profile.cov
 
-cd "${GOPATH}/src/${debug}"
+echo "Building..."
 go build .

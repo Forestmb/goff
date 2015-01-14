@@ -1,6 +1,12 @@
 language: go
 
 go:
-    - 1.2
     - 1.3
-    - tip
+before_install:
+    - go get code.google.com/p/go.tools/cmd/cover
+    - go get code.google.com/p/go.tools/cmd/vet
+    - go get github.com/mattn/goveralls
+script:
+    - ./build.sh
+after_success:
+    - goveralls -coverprofile=profile.cov -service=travis-ci
