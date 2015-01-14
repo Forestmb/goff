@@ -20,7 +20,7 @@ go vet .
 
 echo "Running goimports..."
 go get code.google.com/p/go.tools/cmd/goimports
-$GOPATH/bin/goimports -w .
+goimports -w .
 
 echo "Running go fmt..."
 go fmt ./...
