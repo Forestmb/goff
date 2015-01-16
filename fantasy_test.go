@@ -499,6 +499,7 @@ func TestXMLContentProviderGetError(t *testing.T) {
 		consumer: &mockOAuthConsumer{
 			Response: response,
 			Error:    errors.New("error"),
+            ErrorCount: 1,
 		},
 	}
 
