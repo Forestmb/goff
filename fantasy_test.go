@@ -1095,6 +1095,75 @@ func TestGetAllTeamsError(t *testing.T) {
 }
 
 //
+// Test GetMatchupsForWeekRange
+//
+
+func TestGetMatchupsForWeekRange(t *testing.T) {
+	week1 := []Matchup{
+		Matchup{
+			Week: 1,
+		},
+		Matchup{
+			Week: 1,
+		},
+	}
+	week2 := []Matchup{
+		Matchup{
+			Week: 2,
+		},
+		Matchup{
+			Week: 2,
+		},
+	}
+	week3 := []Matchup{
+		Matchup{
+			Week: 3,
+		},
+		Matchup{
+			Week: 3,
+		},
+	}
+	content := &FantasyContent{
+		League: League{
+			Scoreboard: Scoreboard{
+				Weeks: "1,2,3",
+				Matchups: []Matchup{
+					week1[0],
+					week1[1],
+					week2[0],
+					week2[1],
+					week3[0],
+					week3[1],
+				},
+			},
+		},
+	}
+	client := mockClient(content, nil)
+	actual, err := client.GetMatchupsForWeekRange("leagueKey", 1, 3)
+
+	if err != nil {
+		t.Fatalf("Client returned unexpected error: %s", err)
+	}
+
+	if len(actual[1]) != 2 ||
+		len(actual[2]) != 2 ||
+		len(actual[3]) != 2 {
+
+		t.Fatalf("Unexected content returned after getting matchups: %+v",
+			actual)
+	}
+}
+
+func TestGetMatchupsForWeekRangeError(t *testing.T) {
+	client := mockClient(nil, errors.New("error"))
+	_, err := client.GetMatchupsForWeekRange("leagueKey", 1, 3)
+
+	if err == nil {
+		t.Fatalf("Client did not return error")
+	}
+}
+
+//
 // Assert
 //
 
