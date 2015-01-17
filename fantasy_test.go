@@ -497,9 +497,9 @@ func TestXMLContentProviderGetError(t *testing.T) {
 	client := &oauthHTTPClient{
 		token: &oauth.AccessToken{},
 		consumer: &mockOAuthConsumer{
-			Response: response,
-			Error:    errors.New("error"),
-            ErrorCount: 1,
+			Response:   response,
+			Error:      errors.New("error"),
+			ErrorCount: 1,
 		},
 	}
 

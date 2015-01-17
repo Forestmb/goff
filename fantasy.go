@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -186,17 +187,19 @@ type Game struct {
 // A League is a uniquely identifiable group of players and teams. The scoring system,
 // roster details, and other metadata can differ between leagues.
 type League struct {
-	LeagueKey   string   `xml:"league_key"`
-	LeagueID    uint64   `xml:"league_id"`
-	Name        string   `xml:"name"`
-	Players     []Player `xml:"players>player"`
-	Teams       []Team   `xml:"teams>team"`
-	DraftStatus string   `xml:"draft_status"`
-	CurrentWeek int      `xml:"current_week"`
-	StartWeek   int      `xml:"start_week"`
-	EndWeek     int      `xml:"end_week"`
-	IsFinished  bool     `xml:"is_finished"`
-	Standings   []Team   `xml:"standings>teams>team"`
+	LeagueKey   string     `xml:"league_key"`
+	LeagueID    uint64     `xml:"league_id"`
+	Name        string     `xml:"name"`
+	Players     []Player   `xml:"players>player"`
+	Teams       []Team     `xml:"teams>team"`
+	DraftStatus string     `xml:"draft_status"`
+	CurrentWeek int        `xml:"current_week"`
+	StartWeek   int        `xml:"start_week"`
+	EndWeek     int        `xml:"end_week"`
+	IsFinished  bool       `xml:"is_finished"`
+	Standings   []Team     `xml:"standings>teams>team"`
+	Scoreboard  Scoreboard `xml:"scoreboard"`
+	Settings    Settings   `xml:"settings"`
 }
 
 // A Team is a participant in exactly one league.
@@ -217,6 +220,20 @@ type Team struct {
 	TeamProjectedPoints   Points        `xml:"team_projected_points"`
 	TeamStandings         TeamStandings `xml:"team_standings"`
 	Players               []Player      `xml:"players>player"`
+}
+
+// Settings describes how a league is configured
+type Settings struct {
+	DraftType        string `xml:"draft_type"`
+	ScoringType      string `xml:"scoring_type"`
+	UsesPlayoff      bool   `xml:"users_playoff"`
+	PlayoffStartWeek int    `xml:"playoff_start_week"`
+}
+
+// Scoreboard represents the matchups that occurred for one or more weeks.
+type Scoreboard struct {
+	Weeks    string    `xml:"week"`
+	Matchups []Matchup `xml:"matchups>matchup"`
 }
 
 // A Roster is the set of players belonging to one team for a given week.
@@ -589,7 +606,7 @@ func (c *Client) GetTeamRoster(teamKey string, week int) ([]Player, error) {
 // GetLeagueStandings gets a league containing the current standings.
 func (c *Client) GetLeagueStandings(leagueKey string) (*League, error) {
 	content, err := c.GetFantasyContent(
-		fmt.Sprintf("%s/league/%s/standings",
+		fmt.Sprintf("%s/league/%s;out=standings,settings",
 			YahooBaseURL,
 			leagueKey))
 	if err != nil {
@@ -648,4 +665,32 @@ func (c *Client) GetAllTeams(leagueKey string) ([]Team, error) {
 		return nil, err
 	}
 	return content.League.Teams, nil
+}
+
+// GetMatchupsForWeekRange returns a list of matchups for each week in the
+// requested range.
+func (c *Client) GetMatchupsForWeekRange(leagueKey string, startWeek, endWeek int) (map[int][]Matchup, error) {
+	leagueList := strconv.Itoa(startWeek)
+	for i := startWeek + 1; i <= endWeek; i++ {
+		leagueList += "," + strconv.Itoa(i)
+	}
+	content, err := c.GetFantasyContent(
+		fmt.Sprintf("%s/league/%s/scoreboard;week=%s",
+			YahooBaseURL,
+			leagueKey,
+			leagueList))
+	if err != nil {
+		return nil, err
+	}
+
+	all := make(map[int][]Matchup)
+	for _, matchup := range content.League.Scoreboard.Matchups {
+		week := matchup.Week
+		list, ok := all[week]
+		if !ok {
+			list = make([]Matchup, 0)
+		}
+		all[week] = append(list, matchup)
+	}
+	return all, nil
 }

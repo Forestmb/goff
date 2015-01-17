@@ -1,5 +1,10 @@
 # Changelog #
 
+## 0.4.0 (TBD) ##
+
+- Added `Settings` and `Scoreboard` to `League`
+- Added `GetMatchupsForWeekRange` function to `Client`
+
 ## 0.3.0 (2015-01-09) ##
 
 - Added `DraftStatus` to `League`.
