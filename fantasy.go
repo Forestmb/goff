@@ -226,7 +226,7 @@ type Team struct {
 type Settings struct {
 	DraftType        string `xml:"draft_type"`
 	ScoringType      string `xml:"scoring_type"`
-	UsesPlayoff      bool   `xml:"users_playoff"`
+	UsesPlayoff      bool   `xml:"uses_playoff"`
 	PlayoffStartWeek int    `xml:"playoff_start_week"`
 }
 
