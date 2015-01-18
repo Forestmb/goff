@@ -1138,7 +1138,8 @@ func TestGetMatchupsForWeekRange(t *testing.T) {
 			},
 		},
 	}
-	client := mockClient(content, nil)
+	provider := &mockedContentProvider{content: content, err: nil, count: 0}
+	client := &Client{Provider: provider}
 	actual, err := client.GetMatchupsForWeekRange("leagueKey", 1, 3)
 
 	if err != nil {
@@ -1151,6 +1152,24 @@ func TestGetMatchupsForWeekRange(t *testing.T) {
 
 		t.Fatalf("Unexected content returned after getting matchups: %+v",
 			actual)
+	}
+
+	if !strings.Contains(provider.lastGetURL, "week=1,2,3") {
+		t.Fatal("Did not generate proper request")
+	}
+}
+
+func TestGetMatchupsForWeekRangeOneWeek(t *testing.T) {
+	provider := &mockedContentProvider{
+		content: nil,
+		err:     errors.New("not tested"),
+		count:   0,
+	}
+	client := &Client{Provider: provider}
+	_, _ = client.GetMatchupsForWeekRange("leagueKey", 2, 2)
+
+	if !strings.Contains(provider.lastGetURL, "week=2") {
+		t.Fatal("Did not generate proper request")
 	}
 }
 
