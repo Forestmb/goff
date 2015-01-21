@@ -59,7 +59,8 @@ const (
 
 // ErrAccessDenied is returned when the user does not have permision to
 // access the requested resource.
-var ErrAccessDenied = errors.New("User does not have permission to access the requested resource")
+var ErrAccessDenied = errors.New(
+	"user does not have permission to access the requested resource")
 
 // YearKeys is map of a string year to the string Yahoo uses to identify the
 // fantasy football game for that year.
