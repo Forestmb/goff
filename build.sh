@@ -31,3 +31,6 @@ go tool cover -func profile.cov
 
 echo "Building..."
 go build .
+
+cd debug
+go build .
