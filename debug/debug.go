@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+    "time"
 
 	"github.com/Forestmb/goff"
 )
@@ -73,6 +74,7 @@ func main() {
 			break
 		}
 
+        start := time.Now()
 		response, err := consumer.Get(url, map[string]string{}, accessToken)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error getting content: %s\n", err)
@@ -86,5 +88,6 @@ func main() {
 				fmt.Fprintf(os.Stdout, "Response:\n%s\n", str)
 			}
 		}
+        fmt.Fprintf(os.Stdout, "Request time: %s\n\n", time.Since(start))
 	}
 }
