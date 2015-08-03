@@ -2,8 +2,9 @@
 
 ## 0.4.0 (TBD) ##
 
-- Added `Settings` and `Scoreboard` to `League`
-- Added `GetMatchupsForWeekRange` function to `Client`
+- Added support for 2015 leagues.
+- Added `URL`, `Settings`, and `Scoreboard` to `League`.
+- Added `GetMatchupsForWeekRange` function to `Client`.
 
 ## 0.3.0 (2015-01-09) ##
 
