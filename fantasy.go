@@ -1,8 +1,10 @@
 // Package goff provides a basic Yahoo Fantasy Sports API client.
 //
 // This package is designed to facilitate communication with the Yahoo Fantasy
-// Sports API. The steps required to get a new client up and running are as
-// follows:
+// Sports API. It is recommended, but not required, to use the
+// github.com/mrjones/oauth package to generate a HTTP client to make
+// authenticated API request. The steps required to get a new client up and
+// running with this package are as follows:
 //
 //    1. Obtain an API key for your application.
 //         See https://developer.apps.yahoo.com/dashboard/createKey.html
@@ -10,9 +12,10 @@
 //       information.
 //    3. Use oauth.Consumer to obtain an oauth.AccessToken.
 //         See https://godoc.org/github.com/mrjones/oauth
-//    4. Call goff.NewOAuthClient(consumer, accessToken) with the consumer and
+//    4. Call oauthConsumer.MakeHttpClient(accessToken) with the consumer and
 //       access token.
-//    5. Use the returned client to make direct API requests with
+//    5. Pass the returned http.Client into goff.NewClient
+//    6. Use the returned goff.Client to make direct API requests with
 //       GetFantasyContent(url) or through one of the convenience methods.
 //         See http://developer.yahoo.com/fantasysports/guide/ for the type
 //         requests that can be made.
@@ -135,31 +138,31 @@ type cachedContentProvider struct {
 }
 
 // xmlContentProvider implements ContentProvider and translates XML responses
-// from an httpClient into the appropriate data.
+// from an httpAPIClient into the appropriate data.
 type xmlContentProvider struct {
 	// Makes HTTP requests to the API
-	client httpClient
+	client httpAPIClient
 }
 
-// httpClient defines methods needed to communicate with the Yahoo fantasy
+// httpAPIClient defines methods needed to communicate with the Yahoo fantasy
 // sports API over HTTP
-type httpClient interface {
+type httpAPIClient interface {
 	// Makes HTTP request to the API
 	Get(url string) (response *http.Response, err error)
 	// Get the amount of requests made to the API
 	RequestCount() int
 }
 
-// oauthHTTPClient implements httpClient using OAuth 1.0 for authentication
-type oauthHTTPClient struct {
-	token        *oauth.AccessToken
-	consumer     OAuthConsumer
-	requestCount int
+// HTTPClient defines methods needed to communicated with a service over HTTP
+type HTTPClient interface {
+	// Makes a HTTP GET request
+	Get(url string) (response *http.Response, err error)
 }
 
-// OAuthConsumer returns data from an oauth provider
-type OAuthConsumer interface {
-	Get(url string, data map[string]string, token *oauth.AccessToken) (*http.Response, error)
+// countingHTTPApiClient implements httpAPIClient
+type countingHTTPApiClient struct {
+	client       HTTPClient
+	requestCount int
 }
 
 //
@@ -319,40 +322,29 @@ type Name struct {
 
 //
 // Client
-//
 
-// NewCachedOAuthClient creates a new OAuth client that checks and updates the
+// NewCachedClient creates a new fantasy client that checks and updates the
 // given Cache when retrieving fantasy content.
 //
 // See NewLRUCache
-func NewCachedOAuthClient(
-	cache Cache,
-	consumer OAuthConsumer,
-	accessToken *oauth.AccessToken) *Client {
-
+func NewCachedClient(cache Cache, client HTTPClient) *Client {
 	return &Client{
 		Provider: &cachedContentProvider{
-			delegate: &xmlContentProvider{
-				client: &oauthHTTPClient{
-					token:        accessToken,
-					consumer:     consumer,
-					requestCount: 0,
-				},
-			},
-			cache: cache,
+			delegate: NewClient(client).Provider,
+			cache:    cache,
 		},
 	}
 }
 
-// NewOAuthClient creates a Client that uses oauth authentication to communicate with
-// the Yahoo fantasy sports API. The consumer can be created with `GetConsumer` and
-// then used to obtain the access token passed in here.
-func NewOAuthClient(consumer OAuthConsumer, accessToken *oauth.AccessToken) *Client {
+// NewClient creates a Client that to communicate with the Yahoo fantasy
+// sports API. See the package level documentation for one way to create a
+// http.Client that can authenticate with Yahoo's APIs which can be passed
+// in here.
+func NewClient(c HTTPClient) *Client {
 	return &Client{
 		Provider: &xmlContentProvider{
-			client: &oauthHTTPClient{
-				token:        accessToken,
-				consumer:     consumer,
+			client: &countingHTTPApiClient{
+				client:       c,
 				requestCount: 0,
 			},
 		},
@@ -384,7 +376,7 @@ func (c *Client) RequestCount() int {
 // NewLRUCache creates a new Cache that caches content for the given client
 // for up to the maximum duration.
 //
-// See NewCachedOAuthClient
+// See NewCachedClient
 func NewLRUCache(
 	clientID string,
 	duration time.Duration,
@@ -491,13 +483,13 @@ func (p *xmlContentProvider) RequestCount() int {
 }
 
 //
-// httpClient
+// httpAPIClient
 //
 
 // Get returns the HTTP response of a GET request to the given URL.
-func (o *oauthHTTPClient) Get(url string) (*http.Response, error) {
+func (o *countingHTTPApiClient) Get(url string) (*http.Response, error) {
 	o.requestCount++
-	response, err := o.consumer.Get(url, map[string]string{}, o.token)
+	response, err := o.client.Get(url)
 
 	// Known issue where "consumer_key_unknown" is returned for valid
 	// consumer keys. If this happens, try re-requesting the content a few
@@ -509,7 +501,7 @@ func (o *oauthHTTPClient) Get(url string) (*http.Response, error) {
 		strings.Contains(err.Error(), "consumer_key_unknown"); attempts++ {
 
 		o.requestCount++
-		response, err = o.consumer.Get(url, map[string]string{}, o.token)
+		response, err = o.client.Get(url)
 	}
 
 	if err != nil &&
@@ -522,7 +514,7 @@ func (o *oauthHTTPClient) Get(url string) (*http.Response, error) {
 	return response, err
 }
 
-func (o *oauthHTTPClient) RequestCount() int {
+func (o *countingHTTPApiClient) RequestCount() int {
 	return o.requestCount
 }
 

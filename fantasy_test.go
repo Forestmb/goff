@@ -9,20 +9,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mrjones/oauth"
 	lru "github.com/youtube/vitess/go/cache"
 )
 
 //
-// Test NewOAuthClient
+// Test NewClient
 //
 
-func TestNewOAuthClient(t *testing.T) {
-	clientID := "clientID"
-	clientSecret := "clientSecret"
-	consumer := GetConsumer(clientID, clientSecret)
+func TestNewClient(t *testing.T) {
 
-	client := NewOAuthClient(consumer, &oauth.AccessToken{})
+	client := NewClient(&mockHTTPClient{})
 
 	if client == nil {
 		t.Fatal("No client returned")
@@ -36,18 +32,12 @@ func TestNewOAuthClient(t *testing.T) {
 }
 
 //
-// Test NewCachedOAuthClient
+// Test NewCachedClient
 //
 
-func TestNewCachedOAuthClient(t *testing.T) {
-	clientID := "clientID"
-	clientSecret := "clientSecret"
-	consumer := GetConsumer(clientID, clientSecret)
+func TestNewCachedClient(t *testing.T) {
 
-	client := NewCachedOAuthClient(
-		mockCache(),
-		consumer,
-		&oauth.AccessToken{})
+	client := NewCachedClient(mockCache(), &mockHTTPClient{})
 
 	if client == nil {
 		t.Fatal("No client returned")
@@ -239,14 +229,13 @@ func (m mockedValue) Size() int {
 }
 
 //
-// Test oauthHTTPClient
+// Test countingHTTPApiClient
 //
 
-func TestOAuthHTTPClient(t *testing.T) {
+func TestCountingHTTPClient(t *testing.T) {
 	expected := &http.Response{}
-	client := &oauthHTTPClient{
-		token: &oauth.AccessToken{},
-		consumer: &mockOAuthConsumer{
+	client := &countingHTTPApiClient{
+		client: &mockHTTPClient{
 			Response: expected,
 			Error:    nil,
 		},
@@ -262,11 +251,10 @@ func TestOAuthHTTPClient(t *testing.T) {
 	}
 }
 
-func TestOAuthHTTPClientMultipleErrorsConsumerKeyUnknown(t *testing.T) {
+func TestCountingHTTPClientMultipleErrorsConsumerKeyUnknown(t *testing.T) {
 	expected := &http.Response{}
-	client := &oauthHTTPClient{
-		token: &oauth.AccessToken{},
-		consumer: &mockOAuthConsumer{
+	client := &countingHTTPApiClient{
+		client: &mockHTTPClient{
 			Response:   expected,
 			Error:      errors.New("consumer_key_unknown"),
 			ErrorCount: 5,
@@ -279,11 +267,10 @@ func TestOAuthHTTPClientMultipleErrorsConsumerKeyUnknown(t *testing.T) {
 	}
 }
 
-func TestOAuthHTTPClientInitialErrorConsumerKeyUnknown(t *testing.T) {
+func TestCountingHTTPClientInitialErrorConsumerKeyUnknown(t *testing.T) {
 	expected := &http.Response{}
-	client := &oauthHTTPClient{
-		token: &oauth.AccessToken{},
-		consumer: &mockOAuthConsumer{
+	client := &countingHTTPApiClient{
+		client: &mockHTTPClient{
 			Response:   expected,
 			Error:      errors.New("consumer_key_unknown"),
 			ErrorCount: 4,
@@ -300,10 +287,9 @@ func TestOAuthHTTPClientInitialErrorConsumerKeyUnknown(t *testing.T) {
 	}
 }
 
-func TestOAuthHTTPClientError(t *testing.T) {
-	client := &oauthHTTPClient{
-		token: &oauth.AccessToken{},
-		consumer: &mockOAuthConsumer{
+func TestCountingHTTPClientError(t *testing.T) {
+	client := &countingHTTPApiClient{
+		client: &mockHTTPClient{
 			Response:   &http.Response{},
 			Error:      errors.New("error"),
 			ErrorCount: 5,
@@ -316,10 +302,9 @@ func TestOAuthHTTPClientError(t *testing.T) {
 	}
 }
 
-func TestOAuthHTTPClientAccessDeniedError(t *testing.T) {
-	client := &oauthHTTPClient{
-		token: &oauth.AccessToken{},
-		consumer: &mockOAuthConsumer{
+func TestCountingHTTPClientAccessDeniedError(t *testing.T) {
+	client := &countingHTTPApiClient{
+		client: &mockHTTPClient{
 			Response:   nil,
 			Error:      errors.New("You are not allowed to view this page"),
 			ErrorCount: 1,
@@ -452,9 +437,8 @@ func TestCachedGetNoContentInCacheErrorReturnedCacheNotSet(t *testing.T) {
 
 func TestXMLContentProviderGetLeague(t *testing.T) {
 	response := mockResponse(leagueXMLContent)
-	client := &oauthHTTPClient{
-		token: &oauth.AccessToken{},
-		consumer: &mockOAuthConsumer{
+	client := &countingHTTPApiClient{
+		client: &mockHTTPClient{
 			Response: response,
 			Error:    nil,
 		},
@@ -473,9 +457,8 @@ func TestXMLContentProviderGetLeague(t *testing.T) {
 
 func TestXMLContentProviderGetTeam(t *testing.T) {
 	response := mockResponse(teamXMLContent)
-	client := &oauthHTTPClient{
-		token: &oauth.AccessToken{},
-		consumer: &mockOAuthConsumer{
+	client := &countingHTTPApiClient{
+		client: &mockHTTPClient{
 			Response: response,
 			Error:    nil,
 		},
@@ -494,9 +477,8 @@ func TestXMLContentProviderGetTeam(t *testing.T) {
 
 func TestXMLContentProviderGetError(t *testing.T) {
 	response := mockResponse("content")
-	client := &oauthHTTPClient{
-		token: &oauth.AccessToken{},
-		consumer: &mockOAuthConsumer{
+	client := &countingHTTPApiClient{
+		client: &mockHTTPClient{
 			Response:   response,
 			Error:      errors.New("error"),
 			ErrorCount: 1,
@@ -513,9 +495,8 @@ func TestXMLContentProviderGetError(t *testing.T) {
 
 func TestXMLContentProviderReadError(t *testing.T) {
 	response := mockResponseReadErr()
-	client := &oauthHTTPClient{
-		token: &oauth.AccessToken{},
-		consumer: &mockOAuthConsumer{
+	client := &countingHTTPApiClient{
+		client: &mockHTTPClient{
 			Response: response,
 		},
 	}
@@ -530,9 +511,8 @@ func TestXMLContentProviderReadError(t *testing.T) {
 
 func TestXMLContentProviderParseError(t *testing.T) {
 	response := mockResponse("<not-valid-xml/>")
-	client := &oauthHTTPClient{
-		token: &oauth.AccessToken{},
-		consumer: &mockOAuthConsumer{
+	client := &countingHTTPApiClient{
+		client: &mockHTTPClient{
 			Response: response,
 		},
 	}
@@ -1369,34 +1349,7 @@ func (c *mockedCache) Get(
 	return content, ok
 }
 
-// mockHTTPClient creates a httpClient that always returns the given response
-// and error whenever httpClient.Get is called.
-func mockHTTPClient(resp *http.Response, e error) httpClient {
-	return &mockedHTTPClient{
-		response: resp,
-		err:      e,
-		count:    0,
-	}
-}
-
-type mockedHTTPClient struct {
-	lastGetURL string
-	response   *http.Response
-	err        error
-	count      int
-}
-
-func (m *mockedHTTPClient) Get(url string) (resp *http.Response, err error) {
-	m.lastGetURL = url
-	m.count++
-	return m.response, m.err
-}
-
-func (m *mockedHTTPClient) RequestCount() int {
-	return m.count
-}
-
-type mockOAuthConsumer struct {
+type mockHTTPClient struct {
 	Response   *http.Response
 	Error      error
 	ErrorCount int
@@ -1405,7 +1358,7 @@ type mockOAuthConsumer struct {
 	RequestCount int
 }
 
-func (m *mockOAuthConsumer) Get(url string, data map[string]string, a *oauth.AccessToken) (*http.Response, error) {
+func (m *mockHTTPClient) Get(url string) (*http.Response, error) {
 	m.LastURL = url
 	m.RequestCount++
 	err := m.Error

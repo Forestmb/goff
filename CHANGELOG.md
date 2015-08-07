@@ -5,6 +5,11 @@
 - Added support for 2015 leagues.
 - Added `URL`, `Settings`, and `Scoreboard` to `League`.
 - Added `GetMatchupsForWeekRange` function to `Client`.
+- Updated package to stop using deprecated methods in github.com/mrjones/oauth
+    - Removed NewOAuthClient and NewCachedOAuthClient functions
+    - Remove OAuthConsumer interface
+    - Added NewClient and NewCachedClient
+    - Added HTTPClient interface
 
 ## 0.3.0 (2015-01-09) ##
 
