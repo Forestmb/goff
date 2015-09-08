@@ -267,10 +267,11 @@ type Manager struct {
 // Points represents scoring statistics for a time period specified by
 // CoverageType.
 type Points struct {
-	CoverageType string  `xml:"coverage_type"`
-	Season       string  `xml:"season"`
-	Week         int     `xml:"week"`
-	Total        float64 `xml:"total"`
+	CoverageType string `xml:"coverage_type"`
+	Season       string `xml:"season"`
+	Week         int    `xml:"week"`
+	Total        float64
+	TotalStr     string `xml:"total"`
 }
 
 // Record is the number of wins, losses, and ties for a given team in their
@@ -283,7 +284,8 @@ type Record struct {
 
 // TeamStandings describes how a single Team ranks in their league.
 type TeamStandings struct {
-	Rank          int     `xml:"rank"`
+	Rank          int
+	RankStr       string  `xml:"rank"`
 	Record        Record  `xml:"outcome_totals"`
 	PointsFor     float64 `xml:"points_for"`
 	PointsAgainst float64 `xml:"points_against"`
@@ -475,7 +477,61 @@ func (p *xmlContentProvider) Get(url string) (*FantasyContent, error) {
 		return nil, err
 	}
 
-	return &content, nil
+	return fixContent(&content), nil
+}
+
+// fixContent updates the fantasy data with content that can't be unmarshalled
+// directly from XML
+func fixContent(c *FantasyContent) *FantasyContent {
+	fixTeam(&c.Team)
+	for i := range c.League.Teams {
+		fixTeam(&c.League.Teams[i])
+	}
+	for i := range c.League.Standings {
+		fixTeam(&c.League.Standings[i])
+	}
+	for i := range c.League.Players {
+		fixPoints(&c.League.Players[i].PlayerPoints)
+	}
+	for i := range c.League.Scoreboard.Matchups {
+		fixTeam(&c.League.Scoreboard.Matchups[i].Teams[0])
+		fixTeam(&c.League.Scoreboard.Matchups[i].Teams[1])
+	}
+	return c
+}
+
+func fixTeam(t *Team) {
+	fixPoints(&t.TeamPoints)
+	fixPoints(&t.TeamProjectedPoints)
+	for i := range t.Roster.Players {
+		fixPoints(&t.Roster.Players[i].PlayerPoints)
+	}
+	for i := range t.Players {
+		fixPoints(&t.Players[i].PlayerPoints)
+	}
+	for i := range t.Matchups {
+		fixTeam(&t.Matchups[i].Teams[0])
+		fixTeam(&t.Matchups[i].Teams[1])
+	}
+	fixRank(&t.TeamStandings)
+}
+
+func fixRank(t *TeamStandings) {
+	if t.RankStr != "" {
+		rank, err := strconv.ParseInt(t.RankStr, 10, 64)
+		if err == nil {
+			t.Rank = int(rank)
+		}
+	}
+}
+
+func fixPoints(p *Points) {
+	if p.TotalStr != "" {
+		total, err := strconv.ParseFloat(p.TotalStr, 64)
+		if err == nil {
+			p.Total = total
+		}
+	}
 }
 
 func (p *xmlContentProvider) RequestCount() int {

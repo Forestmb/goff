@@ -525,6 +525,199 @@ func TestXMLContentProviderParseError(t *testing.T) {
 	}
 }
 
+func TestXMLContentProviderEmptyTagsForNumberFields(t *testing.T) {
+	response := mockResponse(`
+<?xml version="1.0" encoding="UTF-8"?>
+<fantasy_content xmlns:yahoo="http://www.yahooapis.com/v1/base.rng" xmlns="http://fantasysports.yahooapis.com/fantasy/v2/base.rng" xml:lang="en-US" yahoo:uri="http://fantasysports.yahooapis.com/fantasy/v2/team/223.l.431.t.1" time="426.26690864563ms" copyright="Data provided by Yahoo! and STATS, LLC">
+  <team>
+    <team_key>` + expectedTeam.TeamKey + `</team_key>
+    <team_id>` + fmt.Sprintf("%d", expectedTeam.TeamID) + `</team_id>
+    <name>` + expectedTeam.Name + `</name>
+    <url>http://football.fantasysports.yahoo.com/archive/pnfl/2009/431/1</url>
+    <team_logos>
+      <team_logo>
+        <size>` + expectedTeam.TeamLogos[0].Size + `</size>
+        <url>` + expectedTeam.TeamLogos[0].URL + `</url>
+      </team_logo>
+    </team_logos>
+    <division_id>2</division_id>
+    <faab_balance>22</faab_balance>
+    <managers>
+      <manager>
+        <manager_id>` + fmt.Sprintf("%d", expectedTeam.Managers[0].ManagerID) +
+		`</manager_id>
+        <nickname>` + expectedTeam.Managers[0].Nickname + `</nickname>
+        <guid>` + expectedTeam.Managers[0].GUID + `</guid>
+      </manager>
+    </managers>
+    <team_points>  
+        <coverage_type>` + expectedTeam.TeamPoints.CoverageType + `</coverage_type>  
+        <week>` + fmt.Sprintf("%d", expectedTeam.TeamPoints.Week) + `</week>  
+        <total/>
+    </team_points>  
+    <team_projected_points>  
+        <coverage_type>` + expectedTeam.TeamProjectedPoints.CoverageType +
+		`</coverage_type>  
+        <week>` + fmt.Sprintf("%d", expectedTeam.TeamProjectedPoints.Week) + `</week>  
+        <total/>
+    </team_projected_points> 
+	<team_standings>
+	    <rank/>
+	</team_standings>
+  </team>
+</fantasy_content> `)
+	client := &countingHTTPApiClient{
+		client: &mockHTTPClient{
+			Response: response,
+		},
+	}
+
+	provider := &xmlContentProvider{client: client}
+	content, err := provider.Get("http://example.com")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	if content.Team.TeamPoints.Total != 0 {
+		t.Fatalf("expected zero team points, got: %f",
+			content.Team.TeamPoints.Total)
+	}
+
+	if content.Team.TeamProjectedPoints.Total != 0 {
+		t.Fatalf("expected zero team projected points, got: %f",
+			content.Team.TeamProjectedPoints.Total)
+	}
+
+	if content.Team.TeamStandings.Rank != 0 {
+		t.Fatalf("expected zero for team rank, got: %d",
+			content.Team.TeamStandings.Rank)
+	}
+}
+
+func TestFixContent(t *testing.T) {
+	expectedRank := 5
+	expectedRankStr := "5"
+	expectedPoints := 543.21
+	expectedPointsStr := "543.21"
+	team := Team{
+		TeamKey: "223.l.431.t.1",
+		TeamID:  1,
+		Name:    "Team Name",
+		Managers: []Manager{
+			Manager{
+				ManagerID: 13,
+				Nickname:  "Nickname",
+				GUID:      "1234567890",
+			},
+		},
+		TeamPoints: Points{
+			CoverageType: "week",
+			Week:         16,
+			TotalStr:     expectedPointsStr,
+		},
+		TeamProjectedPoints: Points{
+			CoverageType: "week",
+			Week:         16,
+			TotalStr:     expectedPointsStr,
+		},
+		TeamStandings: TeamStandings{
+			RankStr: expectedRankStr,
+		},
+		TeamLogos: []TeamLogo{
+			TeamLogo{
+				Size: "medium",
+				URL:  "http://example.com/logo.png",
+			},
+		},
+		Roster: Roster{
+			Players: []Player{
+				Player{PlayerPoints: Points{TotalStr: expectedPointsStr}},
+			},
+		},
+		Players: []Player{
+			Player{PlayerPoints: Points{TotalStr: expectedPointsStr}},
+		},
+		Matchups: []Matchup{
+			Matchup{Teams: []Team{expectedTeam, expectedTeam}},
+		},
+	}
+
+	content := &FantasyContent{
+		Team: team,
+		League: League{
+			Teams:     []Team{team},
+			Standings: []Team{team},
+			Players: []Player{
+				Player{PlayerPoints: Points{TotalStr: expectedPointsStr}},
+			},
+			Scoreboard: Scoreboard{
+				Matchups: []Matchup{Matchup{Teams: []Team{team, team}}},
+			},
+		},
+	}
+
+	actual := fixContent(content)
+	if actual != content {
+		t.Fatalf("Returned pointer should be the same as input:\n\t"+
+			"expected: %+v\n\actual: %+v", content, actual)
+	}
+
+	checkTeam(t, &actual.Team, expectedPoints, expectedRank)
+	checkTeam(t, &actual.League.Teams[0], expectedPoints, expectedRank)
+	checkTeam(t, &actual.League.Standings[0], expectedPoints, expectedRank)
+	checkTeam(t, &actual.League.Standings[0], expectedPoints, expectedRank)
+	if actual.League.Players[0].PlayerPoints.Total != expectedPoints {
+		t.Fatalf("Fantasy content not fixed for %s\n\tactual: %f\n\t"+
+			"expected: %f",
+			"League.Players.PlayerPoints.Total",
+			actual.League.Players[0].PlayerPoints.Total,
+			expectedPoints)
+	}
+}
+
+func checkTeam(t *testing.T, team *Team, expectedPoints float64, expectedRank int) {
+	if team.TeamPoints.Total != expectedPoints {
+		t.Fatalf("Fantasy content not fixed for %s\n\tactual: %f\n\t"+
+			"expected: %f",
+			"TeamPoints.Total",
+			team.TeamPoints.Total,
+			expectedPoints)
+	}
+
+	if team.TeamProjectedPoints.Total != expectedPoints {
+		t.Fatalf("Fantasy content not fixed for %s\n\tactual: %f\n\t"+
+			"expected: %f",
+			"TeamProjectedPoints.Total",
+			team.TeamProjectedPoints.Total,
+			expectedPoints)
+	}
+
+	if team.Roster.Players[0].PlayerPoints.Total != expectedPoints {
+		t.Fatalf("Fantasy content not fixed for %s\n\tactual: %f\n\t"+
+			"expected: %f",
+			"Roster.Players.PlayerPoints.Total",
+			team.Roster.Players[0].PlayerPoints.Total,
+			expectedPoints)
+	}
+
+	if team.Players[0].PlayerPoints.Total != expectedPoints {
+		t.Fatalf("Fantasy content not fixed for %s\n\tactual: %f\n\t"+
+			"expected: %f",
+			"Players.PlayerPoints.Total",
+			team.Players[0].PlayerPoints.Total,
+			expectedPoints)
+	}
+
+	if team.TeamStandings.Rank != expectedRank {
+		t.Fatalf("Fantasy content not fixed for %s\n\tactual: %d\n\t"+
+			"expected: %d",
+			"TeamStandings.Rank",
+			team.TeamStandings.Rank,
+			expectedRank)
+	}
+}
+
 type mockReaderCloser struct {
 	Reader    io.Reader
 	ReadError error
