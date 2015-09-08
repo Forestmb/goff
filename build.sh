@@ -19,7 +19,7 @@ echo "Running go vet..."
 go vet .
 
 echo "Running goimports..."
-go get code.google.com/p/go.tools/cmd/goimports
+go get golang.org/x/tools/cmd/goimports
 goimports -w .
 
 echo "Running go fmt..."
