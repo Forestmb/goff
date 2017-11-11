@@ -64,6 +64,27 @@ func TestGetConsumer(t *testing.T) {
 }
 
 //
+// Test GetOAuth2Config
+//
+
+func TestGetOAuth2Config(t *testing.T) {
+	clientID := "clientID"
+	clientSecret := "clientSecret"
+	redirectURL := "http://example.com"
+
+	config := GetOAuth2Config(clientID, clientSecret, redirectURL)
+	if config == nil {
+		t.Fatal("No config returned")
+	}
+
+	if clientID != config.ClientID ||
+		clientSecret != config.ClientSecret ||
+		redirectURL != config.RedirectURL {
+		t.Fatalf("Invalid config returned: %+v", config)
+	}
+}
+
+//
 // Test lruCache
 //
 

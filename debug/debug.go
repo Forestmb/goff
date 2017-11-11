@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -12,24 +13,31 @@ import (
 	"time"
 
 	"github.com/Forestmb/goff"
+	"golang.org/x/oauth2"
 )
 
 func main() {
 	clientKey := flag.String(
 		"clientKey",
 		"",
-		"Required client OAuth key. "+
+		"Required client OAuth 2 key. "+
 			"See http://developer.yahoo.com/fantasysports/guide/GettingStarted.html"+
 			" for more information")
 	clientSecret := flag.String(
 		"clientSecret",
 		"",
-		"Required client OAuth secret. "+
+		"Required client OAuth 2 secret. "+
+			"See http://developer.yahoo.com/fantasysports/guide/GettingStarted.html"+
+			" for more information")
+	redirectURL := flag.String(
+		"redirectURL",
+		"",
+		"Required client OAuth 2 redirect URL. "+
 			"See http://developer.yahoo.com/fantasysports/guide/GettingStarted.html"+
 			" for more information")
 	flag.Parse()
 	if len(*clientKey) == 0 || len(*clientSecret) == 0 {
-		fmt.Println("Usage: debug --clientKey=\"<key>\" --clientSecret=\"<secret>\"")
+		fmt.Println("Usage: debug --clientKey=\"<key>\" --clientSecret=\"<secret>\" --redirectURL=\"<redirect-url\">")
 		os.Exit(1)
 	}
 
@@ -39,13 +47,9 @@ func main() {
 		*clientKey,
 		*clientSecret)
 
-	consumer := goff.GetConsumer(*clientKey, *clientSecret)
+	config := goff.GetOAuth2Config(*clientKey, *clientSecret, *redirectURL)
 
-	requestToken, url, err := consumer.GetRequestTokenAndUrl("oob")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error getting request token: %s", err)
-		os.Exit(1)
-	}
+	url := config.AuthCodeURL("state", oauth2.AccessTypeOffline)
 
 	fmt.Fprintln(os.Stdout, "(1) Go to: "+url)
 	fmt.Fprintln(os.Stdout, "(2) Grant access, you should get back a verification code.")
@@ -54,11 +58,14 @@ func main() {
 	verificationCode := ""
 	fmt.Scanln(&verificationCode)
 
-	accessToken, err := consumer.AuthorizeToken(requestToken, verificationCode)
+	ctx := context.Background()
+	token, err := config.Exchange(ctx, verificationCode)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error authorizing token: %s\n", err)
 		os.Exit(1)
 	}
+
+	client := config.Client(ctx, token)
 
 	fmt.Fprintln(os.Stdout, "Access granted")
 	fmt.Fprintln(
@@ -75,7 +82,7 @@ func main() {
 		}
 
 		start := time.Now()
-		response, err := consumer.Get(url, map[string]string{}, accessToken)
+		response, err := client.Get(url)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error getting content: %s\n", err)
 		} else {

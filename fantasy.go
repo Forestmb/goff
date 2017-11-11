@@ -8,13 +8,28 @@
 //
 //    1. Obtain an API key for your application.
 //         See https://developer.apps.yahoo.com/dashboard/createKey.html
+//    2. Call goff.GetOAuth2Config(clientId, clientSecret, redirectURL) using
+//		 your client's information.
+//	  3. Use oath2.Config to obtain an oauth2.Token.
+//		   See https://godoc.org/golang.org/x/oauth2#example-Config
+//    4. Call oauth2Config.Client(ctx, token) with the config and access token.
+//    5. Pass the returned http.Client into goff.NewClient.
+//    6. Use the returned goff.Client to make direct API requests with
+//       GetFantasyContent(url) or through one of the convenience methods.
+//         See http://developer.yahoo.com/fantasysports/guide/ for the type
+//         requests that can be made.
+//
+// To use OAuth 1.0 for authentication, use:
+//
+//    1. Obtain an API key for your application.
+//         See https://developer.apps.yahoo.com/dashboard/createKey.html
 //    2. Call goff.GetConsumer(clientID, clientSecret) using your client's
 //       information.
 //    3. Use oauth.Consumer to obtain an oauth.AccessToken.
 //         See https://godoc.org/github.com/mrjones/oauth
 //    4. Call oauthConsumer.MakeHttpClient(accessToken) with the consumer and
 //       access token.
-//    5. Pass the returned http.Client into goff.NewClient
+//    5. Pass the returned http.Client into goff.NewClient.
 //    6. Use the returned goff.Client to make direct API requests with
 //       GetFantasyContent(url) or through one of the convenience methods.
 //         See http://developer.yahoo.com/fantasysports/guide/ for the type
@@ -36,6 +51,7 @@ import (
 
 	"github.com/mrjones/oauth"
 	lru "github.com/youtube/vitess/go/cache"
+	"golang.org/x/oauth2"
 )
 
 //
@@ -47,7 +63,7 @@ const (
 	NflGameKey = "nfl"
 
 	// YahooBaseURL is the base URL for all calls to Yahoo's fantasy sports API
-	YahooBaseURL = "http://fantasysports.yahooapis.com/fantasy/v2"
+	YahooBaseURL = "https://fantasysports.yahooapis.com/fantasy/v2"
 
 	// YahooRequestTokenURL is used to create OAuth request tokens
 	YahooRequestTokenURL = "https://api.login.yahoo.com/oauth/v2/get_request_token"
@@ -58,6 +74,13 @@ const (
 	// YahooGetTokenURL is used to get the OAuth access token used when making
 	// calls to the fantasy sports API.
 	YahooGetTokenURL = "https://api.login.yahoo.com/oauth/v2/get_token"
+
+	// YahooOauth2AuthURL is uesd to start the OAuth 2 login process.
+	YahooOauth2AuthURL = "https://api.login.yahoo.com/oauth2/request_auth"
+
+	// YahooOauth2TokenURL is used to create OAuth 2 access tokens used when
+	// making calls to the fantasy sports API.
+	YahooOauth2TokenURL = "https://api.login.yahoo.com/oauth2/get_token"
 )
 
 // ErrAccessDenied is returned when the user does not have permision to
@@ -367,6 +390,21 @@ func GetConsumer(clientID string, clientSecret string) *oauth.Consumer {
 		})
 }
 
+// GetOAuth2Config generates an OAuth 2 configuration for the Yahoo fantasy
+// sports API
+func GetOAuth2Config(clientID string, clientSecret string, redirectURL string) *oauth2.Config {
+	return &oauth2.Config{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		RedirectURL:  redirectURL,
+		Scopes:       []string{"fspt-r"},
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  YahooOauth2AuthURL,
+			TokenURL: YahooOauth2TokenURL,
+		},
+	}
+}
+
 // RequestCount returns the amount of requests made to the Yahoo API on behalf
 // of the application represented by this Client.
 func (c *Client) RequestCount() int {
@@ -611,7 +649,8 @@ func (c *Client) GetUserLeagues(year string) ([]League, error) {
 		return nil, errors.New("no users returned for current user")
 	}
 
-	if len(content.Users[0].Games) == 0 {
+	if len(content.Users[0].Games) == 0 ||
+		content.Users[0].Games[0].Leagues == nil {
 		return make([]League, 0), nil
 	}
 

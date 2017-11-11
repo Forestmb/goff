@@ -2,7 +2,8 @@
 
 ## 0.4.0 (TBD) ##
 
-- Added support for 2015 leagues.
+- Added OAuth 2.0 as the preferred authentication option.
+- Added support for 2015-2017 leagues.
 - Added `URL`, `Settings`, and `Scoreboard` to `League`.
 - Added `GetMatchupsForWeekRange` function to `Client`.
 - Updated package to stop using deprecated methods in github.com/mrjones/oauth
