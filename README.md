@@ -20,11 +20,15 @@ To make sure this build runs before every commit, use:
 ## Debug ##
 
 The `goff/debug` package can be used to help with developing `goff`. It uses
-the OAuth 1.0 consumer provided by `goff` to make arbitrary `GET` request to
-the Yahoo Fantasy Sports APIs and outputs the string XML response. To run:
+the OAuth 2.0 configuraiton provided by `goff` to make arbitrary `GET` request
+to the Yahoo Fantasy Sports APIs and outputs the string XML response. To run:
 
     $ cd $GOPATH/src/github.com/Forestmb/goff
-    $ go run debug/debug.go --clientKey=<key> --clientSecret=<secret>
+    $ go run debug/debug.go --clientKey=<key> --clientSecret=<secret> --redirectURL=<redirect-url>
 
 The values `key` and `secret` can be obtained after registering your own
 applicaiton: http://developer.yahoo.com/fantasysports/guide/GettingStarted.html
+
+The `redirect-url` must match the callback domain given when registering the
+application with Yahoo. For development, using `127.0.0.1` for the domain and
+`http://127.0.0.1` as the redirect URL should suffice.
