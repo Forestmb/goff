@@ -2,16 +2,16 @@
 //
 // This package is designed to facilitate communication with the Yahoo Fantasy
 // Sports API. It is recommended, but not required, to use the
-// github.com/mrjones/oauth package to generate a HTTP client to make
-// authenticated API request. The steps required to get a new client up and
-// running with this package are as follows:
+// golang.org/x/oauth2 package to generate a HTTP client to make authenticated
+// API request. The steps required to get a new client up and running with this
+// package are as follows:
 //
 //    1. Obtain an API key for your application.
 //         See https://developer.apps.yahoo.com/dashboard/createKey.html
 //    2. Call goff.GetOAuth2Config(clientId, clientSecret, redirectURL) using
 //       your client's information.
 //    3. Use oath2.Config to obtain an oauth2.Token.
-//       See https://godoc.org/golang.org/x/oauth2#example-Config
+//         See https://godoc.org/golang.org/x/oauth2#example-Config
 //    4. Call oauth2Config.Client(ctx, token) with the config and access token.
 //    5. Pass the returned http.Client into goff.NewClient.
 //    6. Use the returned goff.Client to make direct API requests with
