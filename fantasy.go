@@ -92,6 +92,7 @@ var ErrAccessDenied = errors.New(
 // fantasy football game for that year.
 var YearKeys = map[string]string{
 	"nfl":  NflGameKey,
+	"2021": "406",
 	"2020": "399",
 	"2019": "390",
 	"2018": "380",
