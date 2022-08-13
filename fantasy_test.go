@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	lru "github.com/youtube/vitess/go/cache"
+	lru "vitess.io/vitess/go/cache"
 )
 
 //
@@ -144,7 +144,9 @@ func TestGetKey(t *testing.T) {
 func TestGetNoContent(t *testing.T) {
 	clientID := "clientID"
 	duration := time.Hour
-	lruCache := lru.NewLRUCache(10)
+	lruCache := lru.NewLRUCache(10, func(_ any) int64 {
+		return 1
+	})
 	cache := NewLRUCache(clientID, duration, lruCache)
 
 	time := time.Unix(1408281677, 0)
@@ -160,7 +162,9 @@ func TestGetNoContent(t *testing.T) {
 func TestGetContentOfWrongType(t *testing.T) {
 	clientID := "clientID"
 	duration := time.Hour
-	lruCache := lru.NewLRUCache(10)
+	lruCache := lru.NewLRUCache(10, func(_ any) int64 {
+		return 1
+	})
 	cache := NewLRUCache(clientID, duration, lruCache)
 
 	time := time.Unix(1408281677, 0)
@@ -180,7 +184,9 @@ func TestGetContentOfWrongType(t *testing.T) {
 func TestGetWithContent(t *testing.T) {
 	clientID := "clientID"
 	duration := time.Hour
-	lruCache := lru.NewLRUCache(10)
+	lruCache := lru.NewLRUCache(10, func(_ any) int64 {
+		return 1
+	})
 	cache := NewLRUCache(clientID, duration, lruCache)
 
 	time := time.Unix(1408281677, 0)
@@ -206,7 +212,9 @@ func TestGetWithContent(t *testing.T) {
 func TestSet(t *testing.T) {
 	clientID := "clientID"
 	duration := time.Hour
-	lruCache := lru.NewLRUCache(10)
+	lruCache := lru.NewLRUCache(10, func(_ any) int64 {
+		return 1
+	})
 	cache := NewLRUCache(clientID, duration, lruCache)
 
 	time := time.Unix(1408281677, 0)
@@ -784,7 +792,7 @@ func TestGetFantasyContent(t *testing.T) {
 	client := mockClient(expectedContent, nil)
 	actualContent, err := client.GetFantasyContent("http://example.com")
 	if actualContent != expectedContent {
-		t.Fatal("Actual content did not equal expected content\n"+
+		t.Fatalf("Actual content did not equal expected content\n"+
 			"\texpected: %+v\n\tactual: %+v",
 			expectedContent,
 			actualContent)
@@ -866,7 +874,7 @@ func TestGetUserLeaguesNoUsers(t *testing.T) {
 	client := mockClient(content, nil)
 	actual, err := client.GetUserLeagues("2013")
 	if err == nil {
-		t.Fatal("Client did not return error when no users were found\n"+
+		t.Fatalf("Client did not return error when no users were found\n"+
 			"\tcontent: %+v",
 			actual)
 	}
@@ -910,7 +918,7 @@ func TestGetUserLeaguesNoLeagues(t *testing.T) {
 	}
 
 	if len(actual) != 0 {
-		t.Fatal("Client should not have returned leagues\n"+
+		t.Fatalf("Client should not have returned leagues\n"+
 			"\tcontent: %+v",
 			actual)
 	}
