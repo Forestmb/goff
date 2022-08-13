@@ -50,8 +50,8 @@ import (
 	"time"
 
 	"github.com/mrjones/oauth"
-	lru "github.com/youtube/vitess/go/cache"
 	"golang.org/x/oauth2"
+	lru "vitess.io/vitess/go/cache"
 )
 
 //
@@ -92,6 +92,7 @@ var ErrAccessDenied = errors.New(
 // fantasy football game for that year.
 var YearKeys = map[string]string{
 	"nfl":  NflGameKey,
+	"2022": "414",
 	"2021": "406",
 	"2020": "399",
 	"2019": "390",
