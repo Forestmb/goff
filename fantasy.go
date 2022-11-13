@@ -75,7 +75,7 @@ const (
 	// calls to the fantasy sports API.
 	YahooGetTokenURL = "https://api.login.yahoo.com/oauth/v2/get_token"
 
-	// YahooOauth2AuthURL is uesd to start the OAuth 2 login process.
+	// YahooOauth2AuthURL is used to start the OAuth 2 login process.
 	YahooOauth2AuthURL = "https://api.login.yahoo.com/oauth2/request_auth"
 
 	// YahooOauth2TokenURL is used to create OAuth 2 access tokens used when
